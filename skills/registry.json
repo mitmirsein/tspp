@@ -1,0 +1,33 @@
+{
+  "_comment": "TSPP fan-out 엔진 레지스트리 (단일 진실 소스). TAWP에서 vendored — 자세한 출처·동기화는 VENDOR.md 참조. TSPP는 공개 단독 레포이므로 IxTheo(스크래핑)·google-scholar·zotero-local 등은 제외하고 API 4엔진만 둔다.",
+  "skills": {
+    "kci-api-searcher": {
+      "path": "skills/kci-api-searcher",
+      "skill_md": "skills/kci-api-searcher/SKILL.md",
+      "entry_script": "skills/kci-api-searcher/scripts/search.py",
+      "uv_isolated": true,
+      "env": ["KCI_OPEN_API_KEY"]
+    },
+    "nlk-biblio-searcher": {
+      "path": "skills/nlk-biblio-searcher",
+      "skill_md": "skills/nlk-biblio-searcher/SKILL.md",
+      "entry_script": "skills/nlk-biblio-searcher/scripts/search.py",
+      "uv_isolated": true,
+      "env": ["NLK_SEARCH_API_KEY"]
+    },
+    "semantic-scholar": {
+      "path": "skills/semantic-scholar",
+      "skill_md": "skills/semantic-scholar/SKILL.md",
+      "entry_script": "skills/semantic-scholar/scripts/s2_runner.py",
+      "uv_isolated": false,
+      "env": []
+    },
+    "crossref-journal-searcher": {
+      "path": "skills/crossref-journal-searcher",
+      "skill_md": "skills/crossref-journal-searcher/SKILL.md",
+      "entry_script": "skills/crossref-journal-searcher/scripts/crossref_journal_searcher.py",
+      "uv_isolated": false,
+      "env": []
+    }
+  }
+}

@@ -1,0 +1,101 @@
+{
+  "schema_version": 1,
+  "_comment": "sermon-mentor 산출물(6-Phase). TAWP essay_terms.json의 설교 도메인 변형. 핵심 불변식 ①: meditation.origin_memo 는 사용자 원본이며 불가침(읽기전용). developed/messages 는 그 위에 얹힐 뿐 덮어쓰지 않는다. ②: developed/messages 의 통찰은 evidence(학술 fan-out)에 supporting_refs 로 추적된다 — LLM 일반론이 아니라 검증된 자료에 정착(유령인용 차단).",
+
+  "passage": "마태복음 5:1-12",
+  "passage_ref": { "book": "Matthew", "chapter": 5, "verses": "1-12" },
+  "theme": "팔복 — 복의 역설",
+
+  "occasion": {
+    "_comment": "선택. 목회자 입력. 없으면 보편 폴백. 멘토가 회중을 추정하지 않는다(헌법).",
+    "liturgical": "주현절 후 4주",
+    "series": null,
+    "audience_profile_ref": null
+  },
+
+  "meditation": {
+    "_comment": "묵상 씨앗의 심장. origin_memo는 불가침.",
+    "origin_memo": {
+      "_comment": "사용자가 가져온 원본 묵상 메모. 멘토는 이것을 수정하지 않는다(읽기전용 보존). Phase 1 경청의 대상.",
+      "raw": "‘심령이 가난한 자’가 왜 복인지 늘 걸렸다. 가난이 미화되는 건 아닐 텐데. 오늘 새벽에 문득, 이건 소유의 문제가 아니라 하나님 앞에 빈손으로 서는 자리라는 생각이 들었다.",
+      "captured_at": "2026-05-29"
+    },
+    "developed": {
+      "_comment": "Phase 4(자료 정착 심화) 산출. 사용자 승인본. origin_memo를 대체하지 않고, evidence 자료에 정착시켜 심화.",
+      "summary": "팔복의 '복'은 조건의 미화가 아니라, 하나님 나라가 도래하는 자리에 대한 선언이다. '심령이 가난함'은 자기 의를 비운 빈손 — 채워질 자리를 연 상태.",
+      "rooted_in_text": "마 5:3의 'πτωχοὶ τῷ πνεύματι(영으로 가난한)'와 3절 하반 '천국이 그들의 것임이요'의 현재 시제 연결.",
+      "moved_from_origin": "‘가난 미화 우려’(원본 긴장) → ‘소유가 아니라 하나님 앞 자세’(발전)로 이동. 우려 자체는 보존됨(아래 tensions).",
+      "supporting_refs": [
+        {
+          "_comment": "evidence_pack 레코드 id/doi 참조. relation: supports(지지) | challenges(도전) | extends(확장). 자료가 묵상을 덮어쓰는 게 아니라 어떻게 떠받치는지 기록.",
+          "ref_id": "EXAMPLE-DOI-OR-ID",
+          "relation": "supports",
+          "note": "πτωχός의 LXX 용례 연구가 '경제적 가난'이 아닌 '하나님 앞 의존'의 의미장을 뒷받침."
+        }
+      ]
+    },
+    "tensions": [
+      {
+        "_comment": "인위적 봉합은 금지하되 출구는 열어 둔다 — 본문이 정직하게 해소하는 긴장은 그 경로를 기록한다. disposition: open(열린 채 보존) | resolving(부분 해소, 잔여 긴장 보존) | resolved(본문이 정직하게 해소).",
+        "tension": "복의 선언이 현재의 고통(애통·핍박)을 정당화하거나 수동화하지 않는가?",
+        "disposition": "resolving",
+        "resolution_path": "마 5:12의 미래 시제 위로가 고통을 *정당화*하지 않고 종말론적으로 재배치함. 현재의 아픔을 봉합하지는 않음 — 부분 해소, 잔여 긴장 보존."
+      }
+    ],
+    "affect": "위로와 도전이 함께. 안일한 회중에겐 도전, 소진된 회중엔 위로의 무게."
+  },
+
+  "evidence": {
+    "_comment": "Phase 3 학술 fan-out 산출. Phase 2에서 도출한 keywords로 4엔진 검색. 묵상을 덮어쓰지 않고 지지/도전/확장하는 재료. 설교에 인용되진 않으나 설교자가 보는 자료(헌법: 출처 신중성). 경청(Phase 1) 이후에만 호출 — 자료가 처음 생각을 납치하지 않도록.",
+    "keywords_used": {
+      "_comment": "ko → KCI·NLK / en → Crossref·Semantic Scholar 로 라우팅. IxTheo(de) 제외이므로 ko/en 2언어. 엔진 정밀도를 위해 언어별 3~5개 권장(과한 AND 결합은 0건 유발).",
+      "ko": ["팔복", "심령이 가난한 자", "하나님 나라", "복의 역설"],
+      "en": ["Beatitudes", "poor in spirit", "kingdom of heaven", "Sermon on the Mount"]
+    },
+    "engines": ["kci-api-searcher", "nlk-biblio-searcher", "semantic-scholar", "crossref-journal-searcher"],
+    "evidence_pack_ref": "output/EvidencePack.json",
+    "integration_note": "fan-out 자료가 묵상의 어느 대목을 지지/도전/확장했는지 요지(상세는 supporting_refs)."
+  },
+
+  "message_candidates": [
+    {
+      "_comment": "Phase 5 산출. 사용자 통찰을 살려 함께 빚은 후보. 제안이 아니라 공동 형성. 학술 근거 위에서.",
+      "statement": "복은 우리가 갖춘 조건이 아니라, 빈손 위에 임하는 하나님 나라의 선언이다.",
+      "text_anchor": "마 5:3, 5:10 — '천국이 그들의 것임이요'의 수미상관",
+      "audience_hook": "성취로 자기를 증명하려는 회중에게, 빈손이 오히려 자리를 연다는 역설.",
+      "eisegesis_risk": "low",
+      "eisegesis_note": "본문이 직접 지지. 단 '가난=영적 우월'로 미끄러지지 않도록 주의.",
+      "supporting_refs": [
+        { "ref_id": "EXAMPLE-DOI-OR-ID", "relation": "supports", "note": "주석 근거" }
+      ]
+    },
+    {
+      "statement": "팔복은 개인 윤리 지침이 아니라 하나님 나라 공동체의 초상이다.",
+      "text_anchor": "마 5:1-2의 청중 설정(제자들 + 무리) + 복수형 수혜자",
+      "audience_hook": "개인 경건으로 축소된 신앙을 공동체적 부름으로 확장.",
+      "eisegesis_risk": "medium",
+      "eisegesis_note": "본문 지지 가능하나 '공동체' 강조는 묵상보다 적용 쪽 비중 — 후속 주해로 보강 필요.",
+      "supporting_refs": []
+    }
+  ],
+
+  "handoff": {
+    "_comment": "다음 단계(후속 주해 / TOS 작성)로 넘길 것. 보이스(L2)는 여기 없다 — 설교 개요(Phase 5 of CONCEPT 8-Phase) 진입 직전에 본문장르×청중×절기×tier로 확정(CONCEPT §5). keywords는 evidence.keywords_used 에 이미 기록됨.",
+    "terms": [
+      {
+        "concept": "poor in spirit",
+        "canonical_ko": "심령이 가난한 자",
+        "ko_variants": ["심령이 가난한 자", "마음이 가난한 자"],
+        "en": "poor in spirit",
+        "grc": "πτωχοὶ τῷ πνεύματι"
+      }
+    ]
+  },
+
+  "hitl": {
+    "approved": false,
+    "approved_by": null,
+    "approved_at": null,
+    "notes": "Phase 6 사용자 승인 대기. 승인 전까지 다음 단계로 넘기지 않음."
+  }
+}

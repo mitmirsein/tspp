@@ -1,0 +1,5 @@
+triggers:
+  "#journal": crossref_journal_searcher
+  "#crossref-journal": crossref_journal_searcher
+  "저널 검색": crossref_journal_searcher
+  "journal search": crossref_journal_searcher

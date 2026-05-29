@@ -1,0 +1,12 @@
+[project]
+name = "kci-api-searcher"
+version = "1.0.0"
+description = "KCI OpenAPI 기반 임시 검색 스킬 (3개월 한시적 운영)"
+requires-python = ">=3.11"
+dependencies = [
+    "httpx>=0.28.1",
+    "beautifulsoup4>=4.12.0",
+]
+
+[tool.uv]
+# 추가 설정 없음
