@@ -70,14 +70,15 @@ tspp/
 
 | 엔진 | 언어 | 키 | 격리 |
 |---|---|---|---|
-| `semantic-scholar` | en | 불요 | 없음(stdlib) |
+| `semantic-scholar` | en | **선택** `S2_API_KEY`(없으면 public rate limit, 있으면 한도 상향) | 없음(stdlib) |
 | `crossref-journal-searcher` | en | 불요 | 없음 |
-| `kci-api-searcher` | ko | `KCI_OPEN_API_KEY` | uv |
-| `nlk-biblio-searcher` | ko | `NLK_SEARCH_API_KEY` | uv |
+| `kci-api-searcher` | ko | **필수** `KCI_OPEN_API_KEY` | uv |
+| `nlk-biblio-searcher` | ko | **필수** `NLK_SEARCH_API_KEY` | uv |
 
-- **키 없이도 동작**한다 — 키가 없는 엔진은 자동으로 스킵(degraded mode)되고 나머지로 진행한다.
-- 한국어 엔진(KCI·NLK)을 쓰려면 키를 셸 환경변수로 export(예: `dev/.env`)하고 해당 스킬에서 `uv sync`.
-- 빠르게 시작하려면 키 불요인 S2/Crossref만으로 충분하다.
+- **키 종류 두 가지** — `registry.json`의 `env`(필수: 없으면 `research_fanout`이 해당 엔진을 자동 스킵 = degraded) vs `env_optional`(선택: 없어도 동작, 있으면 rate limit만 상향).
+- **필수 키**는 KCI·NLK뿐. 한국어 엔진을 쓰려면 키를 셸 환경변수로 export(예: `dev/.env`)하고 해당 스킬에서 `uv sync`.
+- **S2는 키 없이도 동작**한다 — 호출이 잦거나 429가 잦으면 `S2_API_KEY`를 export해 한도를 올린다(`s2_runner.py`가 `x-api-key` 헤더로 인증).
+- 빠르게 시작하려면 키 불요인 Crossref + (키 없는) S2만으로 충분하다.
 
 ### 1.4 머신·git 주의 (Syncthing 환경)
 - `.git`과 `.venv*`는 **머신 로컬**(`.stignore`로 Syncthing 제외). 한 맥의 환경/레포를 다른 맥과 공유하지 않는다.
