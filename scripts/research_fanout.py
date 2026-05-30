@@ -174,15 +174,62 @@ def _attempt(cmd, cwd, timeout, lang, q):
     return (payload, f"OK {_count(payload)}건 ({dt}s) [{lang}] q='{q}'", False)
 
 
-def run_engine(engine, reg, base_q, limit, expand, timeout, keywords_map=None, retries=0):
-    """단일 엔진 실행(재시도 포함) → (engine, payload_or_None, note, status).
+def _records(payload) -> list:
+    """payload(list/dict)에서 레코드 dict 리스트를 추출(키워드별 결과 합산용)."""
+    if isinstance(payload, list):
+        return [x for x in payload if isinstance(x, dict)]
+    if isinstance(payload, dict):
+        for k in ("results", "records", "data", "items", "hits", "docs"):
+            v = payload.get(k)
+            if isinstance(v, list):
+                return [x for x in v if isinstance(x, dict)]
+    return []
+
+
+def engine_keywords(engine: str, keywords_map: dict | None):
+    """keywords_map에서 엔진 1차 언어의 키워드 리스트를 반환 → (toks, lang).
+    keywords_map이 없거나 해당 언어 키워드가 없으면 None(단일 base_q 모드로 폴백)."""
+    if not keywords_map:
+        return None
+    lang = _engine_lang(engine)
+    toks = keywords_map.get(lang) or keywords_map.get("ko") or []
+    return (toks, lang) if toks else None
+
+
+def _make_cmd(meta: dict, entry: str, builder, q: str, lim: int):
+    """엔진 호출 argv + cwd 구성(uv_isolated 여부 흡수)."""
+    if meta.get("uv_isolated", False):
+        skill_path = os.path.join(_ROOT, meta["path"])
+        rel = os.path.relpath(os.path.join(_ROOT, entry), skill_path)
+        return ["uv", "run", "python", rel] + builder(q, lim), skill_path
+    return ["uv", "run", "python", entry] + builder(q, lim), _ROOT
+
+
+def _search_with_retry(cmd, cwd, eng_timeout, lang, q, retries):
+    """단일 쿼리 검색 + 지수 백오프 재시도 → (payload_or_None, note)."""
+    last = ""
+    for attempt in range(retries + 1):
+        if attempt:
+            time.sleep(min(2 ** attempt, 15) + random.uniform(0, 1))
+        payload, note, retriable = _attempt(cmd, cwd, eng_timeout, lang, q)
+        suffix = f" (재시도 {attempt}/{retries})" if attempt else ""
+        if payload is not None:
+            return payload, note + suffix
+        last = note + suffix
+        if not retriable:
+            break
+    return None, last
+
+
+def run_engine(engine, reg, base_q, limit, expand, timeout, keywords_map=None,
+               retries=0, per_keyword_limit=3):
+    """단일 엔진 실행 → (engine, payload_or_None, note, status).
+
+    keywords_map에 엔진 언어 키워드가 있으면 **키워드별 개별 검색 후 합산**한다
+    (AND 결합이 0건을 유발하던 문제 해소; 중복은 evidence_collect가 dedup).
+    없으면 단일 base_q 검색(기존 동작).
 
     status ∈ {ok, empty, skip_key, fail, unsupported}
-      - ok        : payload 수집 + 1건 이상
-      - empty     : payload 수집 + 0건(검색은 됨, 누락 후보)
-      - skip_key  : 키 환경변수 미설정으로 정당한 degraded(하드 게이트 비대상)
-      - fail      : 재시도 후에도 실패(하드 게이트 대상)
-      - unsupported : 어댑터/레지스트리 미비
     """
     if engine not in ADAPTERS:
         return (engine, None, "어댑터 없음(미지원 엔진)", "unsupported")
@@ -193,31 +240,37 @@ def run_engine(engine, reg, base_q, limit, expand, timeout, keywords_map=None, r
     builder, key_env = ADAPTERS[engine]
     if key_env and not os.environ.get(key_env):
         return (engine, None, f"스킵: {key_env} 미설정 → degraded(키 없는 엔진으로 진행)", "skip_key")
-    q, lang = engine_query(base_q, engine, expand, keywords_map)
     eng_timeout = _engine_timeout(engine, timeout)
+    kw = engine_keywords(engine, keywords_map)
 
-    if meta.get("uv_isolated", False):
-        skill_path = os.path.join(_ROOT, meta["path"])
-        rel = os.path.relpath(os.path.join(_ROOT, entry), skill_path)
-        cmd = ["uv", "run", "python", rel] + builder(q, limit)
-        cwd = skill_path
-    else:
-        cmd = ["uv", "run", "python", entry] + builder(q, limit)
-        cwd = _ROOT
+    # ── 단일 쿼리 모드(키워드맵 없음) — 기존 동작 ──────────────────────────
+    if kw is None:
+        q, lang = engine_query(base_q, engine, expand, keywords_map)
+        cmd, cwd = _make_cmd(meta, entry, builder, q, limit)
+        payload, note = _search_with_retry(cmd, cwd, eng_timeout, lang, q, retries)
+        if payload is None:
+            return (engine, None, note, "fail")
+        return (engine, payload, note, "ok" if _count(payload) else "empty")
 
-    last_note = ""
-    for attempt in range(retries + 1):
-        if attempt:
-            # 지수 백오프 + 지터: rate-limit(429)·일시 네트워크 장애를 흡수한다.
-            time.sleep(min(2 ** attempt, 15) + random.uniform(0, 1))
-        payload, note, retriable = _attempt(cmd, cwd, eng_timeout, lang, q)
-        suffix = f" (재시도 {attempt}/{retries})" if attempt else ""
-        if payload is not None:
-            return (engine, payload, note + suffix, "ok" if _count(payload) else "empty")
-        last_note = note + suffix
-        if not retriable:
-            break
-    return (engine, None, last_note, "fail")
+    # ── 키워드별 개별 검색 모드 (a) — 각 키워드를 per_keyword_limit로 검색·합산 ──
+    toks, lang = kw
+    merged, notes, n_ok, n_fail = [], [], 0, 0
+    for t in toks:
+        cmd, cwd = _make_cmd(meta, entry, builder, t, per_keyword_limit)
+        payload, _note = _search_with_retry(cmd, cwd, eng_timeout, lang, t, retries)
+        if payload is None:
+            n_fail += 1
+            notes.append(f"✗{t}")
+        else:
+            recs = _records(payload)
+            merged.extend(recs)
+            n_ok += 1
+            notes.append(f"{t}={len(recs)}")
+    summary = f"[{lang}] {len(toks)}키워드→{len(merged)}건 ({'; '.join(notes)})"
+    if not merged:
+        # 전부 실패(검색 자체 실패)면 fail, 검색은 됐으나 0건이면 empty
+        return (engine, None, summary, "fail") if (n_fail and not n_ok) else (engine, [], summary, "empty")
+    return (engine, merged, summary, "ok")
 
 
 def main():
@@ -239,6 +292,9 @@ def main():
                          "이 플래그로 속도 우선 병렬로 전환한다.")
     ap.add_argument("--retries", type=int, default=2,
                     help="엔진별 일시 실패(타임아웃·rate-limit·파싱 실패) 재시도 횟수(기본 2, 지수 백오프).")
+    ap.add_argument("--per-keyword-limit", type=int, default=3,
+                    help="키워드별 개별 검색 모드(--keywords-file)에서 키워드당 결과 수(기본 3). "
+                         "각 키워드를 따로 검색해 합산·dedup하므로 AND 결합 0건 문제를 피한다.")
     ap.add_argument("--require-engines", default=None,
                     help="쉼표구분 핵심 엔진 목록. 키 외 사유로 누락(fail/unsupported/미실행)되면 exit 2로 차단(커버리지 하드 게이트). "
                          "키 미설정 스킵·0건은 게이트 통과(정당한 degraded·검색 수행됨).")
@@ -270,7 +326,8 @@ def main():
         if payload is not None:
             results[engine] = payload
 
-    run_args = (reg, args.query, args.limit, args.expand, args.timeout, keywords_map, args.retries)
+    run_args = (reg, args.query, args.limit, args.expand, args.timeout, keywords_map,
+                args.retries, args.per_keyword_limit)
     if args.parallel:
         with concurrent.futures.ThreadPoolExecutor(max_workers=args.max_workers) as ex:
             futs = {ex.submit(run_engine, e, *run_args): e for e in engines}
