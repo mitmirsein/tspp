@@ -29,7 +29,8 @@
       "skill_md": "skills/crossref-journal-searcher/SKILL.md",
       "entry_script": "skills/crossref-journal-searcher/scripts/crossref_journal_searcher.py",
       "uv_isolated": false,
-      "env": []
+      "env": [],
+      "config_optional": "crossref_journal_searcher.py: USER_AGENT mailto (Crossref polite pool — 키 아님, 안정성 향상)"
     }
   }
 }
