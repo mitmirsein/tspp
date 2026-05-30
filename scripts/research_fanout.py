@@ -58,8 +58,10 @@ def _engine_lang(engine: str) -> str:
 
 
 def load_keywords(path: str) -> dict:
-    """per-essay 사전의 keywords 섹션 로드 → {"ko":[...], "en":[...], "de":[...]}.
-    파일 없으면 빈 dict 반환. fan-out 사용 시 ko 원문 폴백."""
+    """키워드 세트 로드 → {"ko":[...], "en":[...]} (TSPP 검색 언어 2종: 한국어·영어).
+    지원 위치(우선순위): (1) top-level "keywords"(per-essay 사전),
+    (2) meditation_seed의 "evidence.keywords_used"(sermon-mentor 산출).
+    파일 없거나 ko·en 모두 비면 빈 dict 반환 → fan-out이 base_q로 폴백."""
     if not path or not os.path.exists(path):
         return {}
     try:
@@ -67,8 +69,11 @@ def load_keywords(path: str) -> dict:
     except Exception as e:
         print(f"[⚠️ warning] keywords-file 로딩 실패({path}): {e}", file=sys.stderr)
         return {}
-    kw = data.get("keywords", {})
-    return {lang: list(kw.get(lang, [])) for lang in ("ko", "en")}
+    kw = data.get("keywords")
+    if not isinstance(kw, dict):
+        kw = (data.get("evidence") or {}).get("keywords_used") or {}
+    out = {lang: list(kw.get(lang, [])) for lang in ("ko", "en")}
+    return out if (out["ko"] or out["en"]) else {}
 
 # 엔진 어댑터: 레지스트리 스킬명 → (argv 빌더(query, limit), 키 환경변수 or None)
 #   argv 빌더는 엔트리 스크립트 *뒤에* 붙는 검색 인자 리스트를 만든다.
@@ -223,9 +228,10 @@ def main():
     ap.add_argument("--limit", type=int, default=10)
     ap.add_argument("--out", default="output/EvidencePack.json")
     ap.add_argument("--raw-dir", default="output/.raw")
-    ap.add_argument("--expand", action="store_true", help="query_expand로 엔진별 ko/en/de 라우팅(per-essay 사전이 1차이며 이 옵션은 보조)")
+    ap.add_argument("--expand", action="store_true", help="query_expand로 엔진별 ko/en 라우팅(per-essay 사전이 1차이며 이 옵션은 보조)")
     ap.add_argument("--keywords-file", default=None,
-                    help="per-essay 사전 JSON 경로(research-mentor 산출). keywords.{ko,en,de} 키워드 리스트를 엔진 언어로 라우팅한다. --expand보다 우선.")
+                    help="키워드 JSON 경로. top-level keywords.{ko,en} 또는 meditation_seed의 evidence.keywords_used.{ko,en}를 "
+                         "엔진 언어로 라우팅(ko→KCI·NLK / en→Crossref·S2). --expand보다 우선.")
     ap.add_argument("--timeout", type=int, default=120,
                     help="엔진별 타임아웃 초 기본값(기본 120). 격리/브라우저 엔진은 ENGINE_TIMEOUT로 더 길게 오버라이드.")
     ap.add_argument("--parallel", action="store_true",
@@ -253,7 +259,7 @@ def main():
 
     keywords_map = load_keywords(args.keywords_file) if args.keywords_file else None
     if keywords_map:
-        print(f"📚 per-essay 사전 적용: ko {len(keywords_map.get('ko',[]))} | en {len(keywords_map.get('en',[]))} | de {len(keywords_map.get('de',[]))}")
+        print(f"📚 키워드 라우팅 적용: ko {len(keywords_map.get('ko',[]))}(→KCI·NLK) | en {len(keywords_map.get('en',[]))}(→Crossref·S2)")
 
     results, notes, status = {}, {}, {}
 

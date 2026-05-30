@@ -10,8 +10,10 @@
   (b) glossary 파일(있을 때만)을 보조 폴백으로 사용하며,
   (c) per-essay 사전 도입 후에는 `expand(text, glossary=per_essay_dict)` 시그니처로 주입한다.
 
-  - import: expand(text, glossary=None) -> {"queries": {ko,en,de}, "matched": {...}, "engine_routing": {...}}
+  - import: expand(text, glossary=None) -> {"queries": {ko,en}, "matched": {...}, "engine_routing": {...}}
   - CLI:    python scripts/query_expand.py "본회퍼 비폭력" [--lang en] [--json] [--glossary path.json]
+
+TSPP 검색 언어는 한국어·영어 2종(ko→KCI·NLK / en→Crossref·S2). 독일어(de)는 미사용.
 """
 import argparse
 import json
@@ -61,14 +63,12 @@ def expand(text: str, glossary: dict | None = None) -> dict:
         return " ".join(out)
 
     en_terms = [terms[k].get("en", "") for k in matched if terms[k].get("en")]
-    de_terms = [terms[k].get("de", "") for k in matched if terms[k].get("de")]
     return {
         "input": clean[:120],
         "matched": {k: terms[k] for k in matched},
         "queries": {
             "ko": clean,
             "en": _join_dedup(en_terms),
-            "de": _join_dedup(de_terms),
         },
         "engine_routing": g.get("engine_routing", {}),
     }
@@ -93,7 +93,7 @@ def best_query_for_engine(text: str, engine: str, glossary: dict | None = None) 
 def main():
     ap = argparse.ArgumentParser(description="TAWP 다국어 질의 확장")
     ap.add_argument("text", help="확장할 질의/주장 텍스트")
-    ap.add_argument("--lang", choices=["ko", "en", "de"], help="특정 언어 쿼리만 출력")
+    ap.add_argument("--lang", choices=["ko", "en"], help="특정 언어 쿼리만 출력")
     ap.add_argument("--json", action="store_true", help="전체 결과 JSON 출력")
     args = ap.parse_args()
     exp = expand(args.text)
@@ -104,7 +104,7 @@ def main():
     else:
         print(f"입력: {exp['input']}")
         print(f"매칭 용어: {list(exp['matched'])}")
-        for lang in ("ko", "en", "de"):
+        for lang in ("ko", "en"):
             q = exp["queries"][lang]
             engs = exp["engine_routing"].get(lang, [])
             print(f"  [{lang}] '{q}'  → 엔진 {engs}")
