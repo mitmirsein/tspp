@@ -36,10 +36,13 @@ def load_records(path: Path) -> list[dict]:
 
 def fmt_record(i: int, r: dict, abstract_chars: int) -> str:
     eng = ENGINE_LABEL.get(r.get("engine", ""), r.get("engine", "?"))
-    title = (r.get("title") or "(제목 없음)").strip()
-    authors = (r.get("authors") or "").strip()
+    title = str(r.get("title") or "(제목 없음)").strip()
+    # authors는 정규화 단계에서 리스트(evidence_collect._authors) — 문자열도 허용.
+    _au = r.get("authors") or ""
+    authors = ", ".join(_au) if isinstance(_au, list) else str(_au)
+    authors = authors.strip()
     year = str(r.get("year") or "").strip()
-    venue = (r.get("venue") or "").strip()
+    venue = str(r.get("venue") or "").strip()
     doi = (r.get("doi") or "").strip()
     url = (r.get("url") or "").strip()
     abstract = (r.get("abstract") or "").strip()
