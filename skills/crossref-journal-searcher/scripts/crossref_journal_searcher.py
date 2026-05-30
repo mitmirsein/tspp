@@ -221,6 +221,7 @@ class CrossrefJournalSearcher:
             "pages": pages,
             "doi": doi,
             "link": link,
+            "abstract": clean_abstract(item.get("abstract", "")),
             "format": fmt_clean,
             "_score": score
         }
