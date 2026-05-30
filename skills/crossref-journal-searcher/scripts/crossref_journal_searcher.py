@@ -13,6 +13,7 @@ Description: Queries the Crossref API for papers Matching the query, restricted
 """
 
 import os
+import re
 import sys
 import json
 import argparse
@@ -25,6 +26,18 @@ import requests
 CONTACT_EMAIL = os.environ.get("CROSSREF_MAILTO", "research@example.org")
 USER_AGENT = f"TSPP-CrossrefSearcher/1.0 (mailto:{CONTACT_EMAIL})"
 CROSSREF_API_URL = "https://api.crossref.org/works"
+
+# Crossref abstract는 JATS XML(<jats:p> 등)로 온다 — 태그 제거 + 공백 정규화.
+_JATS_TAG_RE = re.compile(r"<[^>]+>")
+
+
+def clean_abstract(raw: str) -> str:
+    if not raw:
+        return ""
+    text = _JATS_TAG_RE.sub(" ", raw)
+    text = re.sub(r"\s+", " ", text).strip()
+    text = re.sub(r"^Abstract[:\s]+", "", text, flags=re.IGNORECASE)
+    return text
 
 class CrossrefJournalSearcher:
     def __init__(self, debug: bool = False):
