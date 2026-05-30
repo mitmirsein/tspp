@@ -73,14 +73,14 @@ tspp/
 | 엔진 | 언어 | 인증 | 런타임 의존 |
 |---|---|---|---|
 | `semantic-scholar` | en | **선택** `SEMANTIC_SCHOLAR_API_KEY`(없으면 3초당 1회 제한, 있으면 한도 상향) | `requests` |
-| `crossref-journal-searcher` | en | **키 없음**(public). polite pool용 `mailto`(스크립트 `USER_AGENT` 상수) 권장 | `requests` |
+| `crossref-journal-searcher` | en | **키 없음**(public). polite pool용 `CROSSREF_MAILTO`(이메일, 선택) 권장 | `requests` |
 | `kci-api-searcher` | ko | **필수** `KCI_OPEN_API_KEY` | uv 격리 |
 | `nlk-biblio-searcher` | ko | **필수** `NLK_SEARCH_API_KEY` | uv 격리 |
 
-- **인증 구분**(`registry.json`) — `env`(필수: 없으면 `research_fanout`이 해당 엔진 자동 스킵 = degraded) / `env_optional`(선택 키: 없어도 동작) / `config_optional`(환경변수 아닌 파일 설정).
+- **인증 구분**(`registry.json`) — `env`(필수: 없으면 `research_fanout`이 해당 엔진 자동 스킵 = degraded) / `env_optional`(선택: 없어도 동작, 있으면 한도·안정성 향상).
 - **필수 키는 KCI·NLK뿐.** 두 엔진은 키를 셸 환경변수로 export(예: `dev/.env`)하고 해당 스킬에서 `uv sync`(uv.lock 보유).
 - **S2**: 키 없이도 동작. 호출이 잦거나 429가 잦으면 `SEMANTIC_SCHOLAR_API_KEY`를 export해 한도를 올린다(`s2_runner.py`가 `x-api-key` 헤더로 인증).
-- **Crossref**: 인증키가 없는 public API. `crossref_journal_searcher.py`의 `USER_AGENT` 상수에 박힌 `mailto:` 주소를 본인 이메일로 바꾸면 polite pool로 라우팅되어 더 안정적이다(기본값은 placeholder; 저널 ISSN 필터는 `theology_journals.json` 사용).
+- **Crossref**: 인증키가 없는 public API. `export CROSSREF_MAILTO=you@domain.com`을 주면 polite pool로 라우팅되어 더 안정적이다(User-Agent + `mailto` 쿼리에 반영; 미설정 시 placeholder). 저널 ISSN 필터는 `theology_journals.json` 사용. ※ 이 관례는 참조 스킬 `.skills/journal-collector`와 동일.
 - **런타임**: S2·Crossref는 uv 격리가 없어 시스템 파이썬에 `requests`가 있어야 한다. KCI·NLK는 uv.lock으로 격리 실행.
 - 빠르게 시작하려면 키 불요인 **Crossref + (키 없는) S2** 둘만으로 충분하다(`requests`만 갖추면 됨).
 

@@ -20,7 +20,10 @@ from typing import List, Dict, Any, Optional
 import requests
 
 # Crossref API Polite Pool configuration
-USER_AGENT = "AntigravityTheologyBot/1.0 (mailto:msn@example.com)"
+# Crossref polite pool mailto — 환경변수로 받는다(참조: .skills/journal-collector 관례).
+# CONTACT_EMAIL은 _query_crossref의 params["mailto"]에서도 쓰인다(미정의 시 NameError였음).
+CONTACT_EMAIL = os.environ.get("CROSSREF_MAILTO", "research@example.org")
+USER_AGENT = f"TSPP-CrossrefSearcher/1.0 (mailto:{CONTACT_EMAIL})"
 CROSSREF_API_URL = "https://api.crossref.org/works"
 
 class CrossrefJournalSearcher:
