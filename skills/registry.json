@@ -1,6 +1,6 @@
 {
   "_comment": "TSPP fan-out 엔진 레지스트리 (단일 진실 소스). TAWP에서 vendored — 자세한 출처·동기화는 VENDOR.md 참조. TSPP는 공개 단독 레포이므로 IxTheo(스크래핑)·google-scholar·zotero-local 등은 제외하고 API 4엔진만 둔다.",
-  "_env_semantics": "env = 필수 키(없으면 research_fanout이 해당 엔진을 스킵). env_optional = 선택 키(없어도 동작, 있으면 rate limit 상향 — 게이트에 영향 없음, 문서용).",
+  "_env_semantics": "env = 필수 키(없으면 research_fanout이 해당 엔진을 스킵). env_optional = 선택 키(없어도 동작, 있으면 rate limit 상향 — 게이트에 영향 없음, 문서용). config_optional = 환경변수 아닌 파일 설정(문서용).",
   "skills": {
     "kci-api-searcher": {
       "path": "skills/kci-api-searcher",
@@ -22,7 +22,7 @@
       "entry_script": "skills/semantic-scholar/scripts/s2_runner.py",
       "uv_isolated": false,
       "env": [],
-      "env_optional": ["S2_API_KEY"]
+      "env_optional": ["SEMANTIC_SCHOLAR_API_KEY"]
     },
     "crossref-journal-searcher": {
       "path": "skills/crossref-journal-searcher",
