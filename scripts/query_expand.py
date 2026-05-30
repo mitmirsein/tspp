@@ -24,7 +24,7 @@ import sys
 # 엔진→언어 라우팅(코드 내장; glossary 파일 없어도 라우팅은 동작).
 # per-essay 사전이나 외부 glossary로 override 가능.
 DEFAULT_ENGINE_ROUTING = {
-    "ko": ["kci-api-searcher", "nlk-biblio-searcher"],
+    "ko": ["kci-api-searcher", "nlk-ejournal-searcher"],
     "en": ["crossref-journal-searcher", "semantic-scholar"],
 }
 

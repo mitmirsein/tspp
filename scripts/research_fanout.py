@@ -42,7 +42,7 @@ try:
 except Exception:
     best_query_for_engine = None
     DEFAULT_ENGINE_ROUTING = {
-        "ko": ["kci-api-searcher", "nlk-biblio-searcher"],
+        "ko": ["kci-api-searcher", "nlk-ejournal-searcher"],
         "en": ["crossref-journal-searcher", "semantic-scholar"],
     }
 
@@ -79,7 +79,7 @@ def load_keywords(path: str) -> dict:
 #   argv 빌더는 엔트리 스크립트 *뒤에* 붙는 검색 인자 리스트를 만든다.
 ADAPTERS = {
     "kci-api-searcher":          (lambda q, l: [q, "--limit", str(l), "--output", "json"], "KCI_OPEN_API_KEY"),
-    "nlk-biblio-searcher":       (lambda q, l: [q, "--limit", str(l), "--output", "json"], "NLK_SEARCH_API_KEY"),
+    "nlk-ejournal-searcher":     (lambda q, l: [q, "--limit", str(l), "--output", "json"], "NLK_DATA_GO_KR_KEY"),
     "semantic-scholar":          (lambda q, l: ["-q", q, "-l", str(l), "--format", "json"], None),
     "crossref-journal-searcher": (lambda q, l: ["-q", q, "-l", str(l), "--format", "json"], None),
 }
@@ -90,7 +90,7 @@ DEFAULT_ENGINES = list(ADAPTERS.keys())
 # 미등재 엔진은 --timeout 기본값을 그대로 사용한다.
 ENGINE_TIMEOUT = {
     "kci-api-searcher": 180,
-    "nlk-biblio-searcher": 180,
+    "nlk-ejournal-searcher": 60,
 }
 
 

@@ -9,12 +9,12 @@
       "uv_isolated": true,
       "env": ["KCI_OPEN_API_KEY"]
     },
-    "nlk-biblio-searcher": {
-      "path": "skills/nlk-biblio-searcher",
-      "skill_md": "skills/nlk-biblio-searcher/SKILL.md",
-      "entry_script": "skills/nlk-biblio-searcher/scripts/search.py",
-      "uv_isolated": true,
-      "env": ["NLK_SEARCH_API_KEY"]
+    "nlk-ejournal-searcher": {
+      "path": "skills/nlk-ejournal-searcher",
+      "skill_md": "skills/nlk-ejournal-searcher/SKILL.md",
+      "entry_script": "skills/nlk-ejournal-searcher/scripts/search.py",
+      "uv_isolated": false,
+      "env": ["NLK_DATA_GO_KR_KEY"]
     },
     "semantic-scholar": {
       "path": "skills/semantic-scholar",
