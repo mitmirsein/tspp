@@ -98,6 +98,26 @@ def _engine_timeout(engine: str, default_timeout: int) -> int:
     return ENGINE_TIMEOUT.get(engine, default_timeout)
 
 
+# 엔진별 키워드당 결과 수 오버라이드(키워드별 개별 검색 모드). --per-keyword-limit가
+# 전역 기본이고, 여기 등재된 엔진은 이 값으로 덮는다. 토큰·중복 특성에 맞춘 양 조절:
+#   - 한국어(KCI·NLK전자저널)는 상호 중복 0% → 합산 시 dedup으로 안 줄어 결과가 그대로
+#     누적된다. 보수적으로 작게 잡아 한국어 쏠림·토큰 폭증을 막는다.
+#   - 영어(S2·Crossref)는 DOI 중복이 잦아 dedup 여지가 있어 약간 넉넉히 받는다.
+# CLI --per-keyword-limit-<engine> 로 개별 덮어쓸 수 있다(없으면 이 표 → 전역값 순).
+ENGINE_PER_KEYWORD = {
+    "kci-api-searcher": 2,
+    "nlk-ejournal-searcher": 2,
+    "semantic-scholar": 3,
+    "crossref-journal-searcher": 3,
+}
+
+
+def _engine_per_keyword(engine: str, default_limit: int, overrides: dict | None = None) -> int:
+    if overrides and engine in overrides:
+        return overrides[engine]
+    return ENGINE_PER_KEYWORD.get(engine, default_limit)
+
+
 def load_registry() -> dict:
     try:
         return json.load(open(REGISTRY, encoding="utf-8")).get("skills", {})
@@ -222,7 +242,7 @@ def _search_with_retry(cmd, cwd, eng_timeout, lang, q, retries):
 
 
 def run_engine(engine, reg, base_q, limit, expand, timeout, keywords_map=None,
-               retries=0, per_keyword_limit=3):
+               retries=0, per_keyword_limit=3, pk_overrides=None):
     """단일 엔진 실행 → (engine, payload_or_None, note, status).
 
     keywords_map에 엔진 언어 키워드가 있으면 **키워드별 개별 검색 후 합산**한다
@@ -252,11 +272,14 @@ def run_engine(engine, reg, base_q, limit, expand, timeout, keywords_map=None,
             return (engine, None, note, "fail")
         return (engine, payload, note, "ok" if _count(payload) else "empty")
 
-    # ── 키워드별 개별 검색 모드 (a) — 각 키워드를 per_keyword_limit로 검색·합산 ──
+    # ── 키워드별 개별 검색 모드 (a) — 각 키워드를 키워드당 리미트로 검색·합산 ──
+    # 리미트는 엔진별 오버라이드(ENGINE_PER_KEYWORD) → CLI overrides → 전역 순으로 결정.
+    # 한국어(KCI·전자저널)는 상호 중복 0%라 작게(2), 영어는 dedup 여지로 넉넉히(3).
     toks, lang = kw
+    pk_limit = _engine_per_keyword(engine, per_keyword_limit, pk_overrides)
     merged, notes, n_ok, n_fail = [], [], 0, 0
     for t in toks:
-        cmd, cwd = _make_cmd(meta, entry, builder, t, per_keyword_limit)
+        cmd, cwd = _make_cmd(meta, entry, builder, t, pk_limit)
         payload, _note = _search_with_retry(cmd, cwd, eng_timeout, lang, t, retries)
         if payload is None:
             n_fail += 1
@@ -266,7 +289,7 @@ def run_engine(engine, reg, base_q, limit, expand, timeout, keywords_map=None,
             merged.extend(recs)
             n_ok += 1
             notes.append(f"{t}={len(recs)}")
-    summary = f"[{lang}] {len(toks)}키워드→{len(merged)}건 ({'; '.join(notes)})"
+    summary = f"[{lang}] {len(toks)}키워드×{pk_limit}→{len(merged)}건 ({'; '.join(notes)})"
     if not merged:
         # 전부 실패(검색 자체 실패)면 fail, 검색은 됐으나 0건이면 empty
         return (engine, None, summary, "fail") if (n_fail and not n_ok) else (engine, [], summary, "empty")
@@ -293,8 +316,12 @@ def main():
     ap.add_argument("--retries", type=int, default=2,
                     help="엔진별 일시 실패(타임아웃·rate-limit·파싱 실패) 재시도 횟수(기본 2, 지수 백오프).")
     ap.add_argument("--per-keyword-limit", type=int, default=3,
-                    help="키워드별 개별 검색 모드(--keywords-file)에서 키워드당 결과 수(기본 3). "
-                         "각 키워드를 따로 검색해 합산·dedup하므로 AND 결합 0건 문제를 피한다.")
+                    help="키워드별 개별 검색 모드(--keywords-file)에서 키워드당 결과 수(전역 기본 3). "
+                         "각 키워드를 따로 검색해 합산·dedup하므로 AND 결합 0건 문제를 피한다. "
+                         "엔진별 기본은 ENGINE_PER_KEYWORD(한국어 2·영어 3)가 우선.")
+    ap.add_argument("--per-keyword-limit-engine", action="append", default=[], metavar="ENGINE=N",
+                    help="특정 엔진의 키워드당 결과 수 덮어쓰기(반복 가능). 예: "
+                         "--per-keyword-limit-engine nlk-ejournal-searcher=1")
     ap.add_argument("--require-engines", default=None,
                     help="쉼표구분 핵심 엔진 목록. 키 외 사유로 누락(fail/unsupported/미실행)되면 exit 2로 차단(커버리지 하드 게이트). "
                          "키 미설정 스킵·0건은 게이트 통과(정당한 degraded·검색 수행됨).")
@@ -317,6 +344,14 @@ def main():
     if keywords_map:
         print(f"📚 키워드 라우팅 적용: ko {len(keywords_map.get('ko',[]))}(→KCI·NLK) | en {len(keywords_map.get('en',[]))}(→Crossref·S2)")
 
+    # 엔진별 키워드당 리미트 오버라이드 파싱(ENGINE=N)
+    pk_overrides = {}
+    for spec in args.per_keyword_limit_engine:
+        if "=" in spec:
+            e, _, n = spec.partition("=")
+            if n.strip().isdigit():
+                pk_overrides[e.strip()] = int(n)
+
     results, notes, status = {}, {}, {}
 
     def _collect(res):
@@ -327,7 +362,7 @@ def main():
             results[engine] = payload
 
     run_args = (reg, args.query, args.limit, args.expand, args.timeout, keywords_map,
-                args.retries, args.per_keyword_limit)
+                args.retries, args.per_keyword_limit, pk_overrides)
     if args.parallel:
         with concurrent.futures.ThreadPoolExecutor(max_workers=args.max_workers) as ex:
             futs = {ex.submit(run_engine, e, *run_args): e for e in engines}
