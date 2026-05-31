@@ -53,7 +53,7 @@ tspp/
 ├─ skills/                             에이전트 스킬(작성·멘토링 의례)
 │   ├─ sermon-mentor/  voice-ingest/  sermon-outline/  manuscript-expander/
 │   ├─ registry.json                  fan-out 엔진 단일 진실 소스(4엔진)
-│   └─ kci-api-searcher/ nlk-biblio-searcher/ semantic-scholar/ crossref-journal-searcher/
+│   └─ kci-api-searcher/ nlk-ejournal-searcher/ semantic-scholar/ crossref-journal-searcher/
 ├─ personas/                          Preacher_{Expositor,Prophet,Pastor,Evangelist,Catechist}.md
 ├─ references/homiletic-voice.md      L1 보편 보이스 헌장
 ├─ data/                              homiletic_voice_palette.json · audience_profile.example.json
@@ -68,21 +68,31 @@ tspp/
 
 `skills/registry.json`의 4엔진:
 
-4엔진 모두 **public REST API**다(스크래핑 아님). 키 요구는 한국어 엔진뿐:
+4엔진 모두 **public REST API**다(스크래핑 아님). 언어 라우팅: **ko → KCI·NLK전자저널 / en → Crossref·S2**.
 
 | 엔진 | 언어 | 인증 | 런타임 의존 |
 |---|---|---|---|
-| `semantic-scholar` | en | **선택** `SEMANTIC_SCHOLAR_API_KEY`(없으면 3초당 1회 제한, 있으면 한도 상향) | `requests` |
-| `crossref-journal-searcher` | en | **키 없음**(public). polite pool용 `CROSSREF_MAILTO`(이메일, 선택) 권장 | `requests` |
 | `kci-api-searcher` | ko | **필수** `KCI_OPEN_API_KEY` | uv 격리 |
-| `nlk-biblio-searcher` | ko | **필수** `NLK_SEARCH_API_KEY` | uv 격리 |
+| `nlk-ejournal-searcher` | ko | **필수** `NLK_DATA_GO_KR_KEY` | stdlib(urllib+ElementTree) |
+| `crossref-journal-searcher` | en | **키 없음**(public). polite pool용 `CROSSREF_MAILTO`(선택) | `requests` |
+| `semantic-scholar` | en | **선택** `SEMANTIC_SCHOLAR_API_KEY`(없으면 3초당 1회, 있으면 한도 상향) | `requests` |
 
 - **인증 구분**(`registry.json`) — `env`(필수: 없으면 `research_fanout`이 해당 엔진 자동 스킵 = degraded) / `env_optional`(선택: 없어도 동작, 있으면 한도·안정성 향상).
-- **필수 키는 KCI·NLK뿐.** 두 엔진은 키를 셸 환경변수로 export(예: `dev/.env`)하고 해당 스킬에서 `uv sync`(uv.lock 보유).
-- **S2**: 키 없이도 동작. 호출이 잦거나 429가 잦으면 `SEMANTIC_SCHOLAR_API_KEY`를 export해 한도를 올린다(`s2_runner.py`가 `x-api-key` 헤더로 인증).
-- **Crossref**: 인증키가 없는 public API. `export CROSSREF_MAILTO=you@domain.com`을 주면 polite pool로 라우팅되어 더 안정적이다(User-Agent + `mailto` 쿼리에 반영; 미설정 시 placeholder). 저널 ISSN 필터는 `theology_journals.json` 사용. ※ 이 관례는 참조 스킬 `.skills/journal-collector`와 동일.
-- **런타임**: S2·Crossref는 uv 격리가 없어 시스템 파이썬에 `requests`가 있어야 한다. KCI·NLK는 uv.lock으로 격리 실행.
-- 빠르게 시작하려면 키 불요인 **Crossref + (키 없는) S2** 둘만으로 충분하다(`requests`만 갖추면 됨).
+- **필수 키는 KCI·NLK전자저널뿐.** 셸 환경변수로 export(예: dev 루트 `.env`). KCI는 `uv sync` 필요(uv.lock), NLK전자저널은 순수 stdlib(설치 불필요).
+- **NLK전자저널**: 국립중앙도서관 data.go.kr 전자저널(학술논문) — 초록·목차·ISSN·DBpia 원문링크 제공. 키 `NLK_DATA_GO_KR_KEY`는 nl.go.kr `NLK_SEARCH_API_KEY`와 **다른 키**(data.go.kr 일반 인증키). KCI와 결과 중복 0%(상호 보완).
+- **S2**: 키 없이도 동작. 429 잦으면 `SEMANTIC_SCHOLAR_API_KEY` export(`x-api-key` 헤더 인증).
+- **Crossref**: 인증키 없는 public API. `export CROSSREF_MAILTO=you@domain.com`이면 polite pool로 더 안정적(미설정 시 placeholder). 저널 ISSN 필터는 `theology_journals.json`. ※ 관례는 참조 스킬 `.skills/journal-collector`와 동일.
+- **런타임**: NLK전자저널·Crossref·S2는 stdlib 또는 `requests`만, KCI는 uv.lock 격리.
+- 빠른 시작: 키 불요인 **Crossref + (키 없는) S2**만으로도 충분(`requests`만 갖추면 됨).
+
+**키워드별 개별 검색(권장)** — `--keywords-file`로 키워드 세트를 주면 키워드마다 따로 검색해 합산·중복제거한다(AND 한줄 결합이 NLK·KCI에서 0건 유발하던 문제 해소). `--per-keyword-limit`(기본 3)로 키워드당 결과 수 조절. 키워드 세트는 `meditation_seed.json`의 `evidence.keywords_used.{ko,en}`를 그대로 사용.
+
+**선별 리스트(HITL 1단계)** — `EvidencePack.json` → 사람이 읽는 선별 화면:
+```bash
+python scripts/evidence_list.py --evidence output/$RUN/EvidencePack.json \
+  --out output/$RUN/evidence_list.md
+```
+초록 보유분을 위로 정렬하고 입수링크(DOI/URL)를 표기한다. 설교자는 이 리스트에서 원문을 골라 `input/resources/`에 넣고(2단계) → LLM이 그 원문을 분석(3단계). 초록은 *선별 재료*일 뿐, 없는 자료도 버리지 않는다(유령인용 차단은 원문 입수로). 워크플로우 상세: [`references/research-workflow.md`](./references/research-workflow.md).
 
 ### 1.4 머신·git 주의 (Syncthing 환경)
 - `.git`과 `.venv*`는 **머신 로컬**(`.stignore`로 Syncthing 제외). 한 맥의 환경/레포를 다른 맥과 공유하지 않는다.
@@ -112,10 +122,12 @@ mkdir -p output/$RUN
 - Phase 3 학술 fan-out(선택, **경청 이후에만**):
 
 ```bash
+# 키워드별 개별 검색(권장) — meditation_seed의 keywords_used를 언어 라우팅으로 검색·합산
 python scripts/research_fanout.py "<본문/주제>" \
-  --engines semantic-scholar,crossref-journal-searcher \
-  --parallel --out output/$RUN/EvidencePack.json
-# 한국어 엔진까지: --engines kci-api-searcher,nlk-biblio-searcher,semantic-scholar,crossref-journal-searcher
+  --keywords-file output/$RUN/meditation_seed.json \
+  --engines kci-api-searcher,nlk-ejournal-searcher,semantic-scholar,crossref-journal-searcher \
+  --per-keyword-limit 3 --out output/$RUN/EvidencePack.json
+# 키 없이 빠른 시작: --engines semantic-scholar,crossref-journal-searcher
 ```
 
 - 산출 `meditation_seed.json`은 **설교자 승인(`hitl.approved=true`) 전 다음 단계로 넘기지 않는다.**
