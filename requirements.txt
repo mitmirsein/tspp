@@ -1,0 +1,24 @@
+# TSPP 런타임 의존성 — 최초 설치 시: pip install -r requirements.txt
+#
+# 헌법 §11: 순수 stdlib 우선(외부 패키지 0 지향). 아래는 *꼭 필요한 곳*에만 쓰는
+# 최소 의존성이며, 머신 로컬 가상환경(.venv-m1 / .venv-intel 등, gitignore됨)에
+# 설치한다. 릴리스 에이지 정책(매우 최신 버전은 7일간 차단될 수 있음)을 존중 —
+# 막히면 허용된 옛 버전을 택한다.
+#
+# 설치 예:
+#   python3 -m venv .venv-m1 && source .venv-m1/bin/activate
+#   pip install -r requirements.txt
+
+# --- fan-out 엔진(영어): Crossref · Semantic Scholar ---
+requests>=2.31
+
+# --- PDF 본문 추출(3단계 분석): 페이지 번호 보존 = 정확한 인용 ---
+# 기본 백엔드. 순수 파이썬·BSD·시스템 의존 0 → 불특정 다수 설치에 가장 무난.
+# OCR된 PDF(텍스트 레이어 보유)면 그대로 추출된다.
+pypdf>=4.0
+
+# (선택) 더 견고한 추출이 필요하면 아래 중 하나를 추가 설치 — resource_ingest가
+# 설치된 것을 자동 우선 선택한다. poppler(pdftotext) 또는 tesseract(스캔본 OCR)는
+# 시스템 패키지로 별도 설치(brew install poppler tesseract).
+#   pip install pymupdf       # 고품질·빠름 (AGPL 라이선스 유의)
+#   pip install pdfplumber    # 레이아웃 친화

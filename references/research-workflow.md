@@ -32,7 +32,7 @@ TSPP는 API 검색 결과에만 의존해 최종 원고를 작성하지 않고, 
 
 ### 1단계: 1차 정찰 (Discovery Phase)
 * **목표**: 완벽한 초록 분석이 아니라, 설교자가 선별할 수 있는 **'식별 정보(제목/저자/DOI)'와 '원문 입수 경로(링크)'**를 정직하게 제공하는 것입니다.
-* **작동**: KCI, Crossref, Semantic Scholar를 병렬 가동하여 후보 리스트를 추출합니다. API 응답의 초록 필드가 비어있더라도 유용한 연구 목록이라면 필터링(삭제)하지 않고 리스트에 남겨둡니다.
+* **작동**: KCI, NLK전자저널, Crossref, Semantic Scholar를 키워드별로 가동하여 후보 리스트를 추출합니다. API 응답의 초록 필드가 비어있더라도 유용한 연구 목록이라면 필터링(삭제)하지 않고 리스트에 남겨둡니다.
 
 ### 2단계: HITL 원문 입수 (Ingestion Phase)
 * **목표**: 실제 분석에 사용할 고밀도 학술 원문(Full Text)을 로컬 환경에 확보합니다.
@@ -52,11 +52,16 @@ TSPP는 API 검색 결과에만 의존해 최종 원고를 작성하지 않고, 
   * Google Scholar 검색 바로가기 링크 (DOI 혹은 제목 쿼리 자동 완성)
   * RISS 또는 국립중앙도서관 바로가기 링크 (KCI 논문용)
 
-### ② 파일 매핑 규칙 (File Mapping Rule)
-* 사용자가 리소스 폴더에 다운로드받은 파일을 저장할 때, 시스템이 1단계의 메타데이터와 쉽게 대조할 수 있도록 매핑 컨벤션을 제공합니다.
-  * 예: `[검색ID]_[논문제목].pdf` 또는 `[DOI].pdf` 형태로 저장하는 규칙을 권장하거나,
-  * 파일이 투입되면 에이전트가 첫 페이지의 제목/저자 정보를 읽고 `EvidencePack` 내의 메타데이터와 지능적으로 매핑(Semantic Mapping)을 시도합니다.
+### ② 입수 폴더 · 파일 매핑 규칙 (File Mapping Rule)
+* **입수 폴더**: `input/resources/<run>/` (목회자 자산 — gitignore·로컬 처리, 헌법 §9). `evidence_list.md`가 이 경로를 안내하고, `resource_ingest.py`가 없으면 만든다.
+* **권장 파일명 = DOI 슬러그** (`10.x/abc` → `10.x_abc.pdf`). 실측상 레코드의 **DOI 보유율이 압도적**(예: 팔복 38건 중 DOI 37·citekey 0)이라 DOI를 사실상의 안정 식별자로 삼는다. `evidence_list.md`의 각 항목이 **권장 파일명**을 직접 표기하므로, 그대로 저장하면 자동 매핑된다.
+* **매핑 단계**(`resource_ingest.match_record`): ① 파일명 stem == DOI 슬러그(정확) → ② DOI 부분 포함 → ③ citekey → ④ 제목 토큰 자카드(파일명+첫 페이지 텍스트 vs 레코드 제목, ≥0.5). DOI 없는 소수 레코드는 제목 슬러그로 폴백.
 
-### ③ 소프트 폴백 모드 (Degraded Mode)
-* 설교자가 바빠서 원문 PDF를 직접 확보하기 어려울 때를 대비해 소프트 폴백을 지원합니다.
-  * 리소스 폴더에 실물 파일이 입력되지 않은 레코드라도, 1차 정찰 시 KCI나 Semantic Scholar 등에서 부분적으로 확보된 초록 및 메타데이터를 기반으로 제한적인 분석을 진행할 수 있게 허용합니다. (단, 이 경우 정보 밀도가 낮으므로 AI가 과도한 비약을 하지 않도록 경고를 표시합니다.)
+### ③ 본문 추출 — 페이지 번호 보존 (Citation-Safe Extraction)
+* `python3 scripts/resource_ingest.py <run>` → 입수 PDF/텍스트를 **페이지 마커가 박힌 텍스트**로 추출하고 `resource_manifest.json`(파일↔레코드 매핑)을 만든다. 추출물은 `output/<run>/resources/`(gitignore).
+* **인용을 위한 페이지 보존**: 각 페이지를 `===== p.N =====` 마커로 구분 → 에이전트가 `(저자 연도, p.N)` 정확 인용을 만든다(유령인용 차단, §7). 스크립트는 추출·매핑만 하고 산문(요약·분석)은 짓지 않는다(§11) — 분석은 에이전트가 페이지 표시 텍스트를 읽고 한다.
+* **백엔드(있는 것 자동 선택)**: pymupdf > pdfplumber > **pypdf**(requirements.txt 기본·순수 파이썬·BSD) > pdftotext(poppler). OCR된 PDF(요즘 추세)는 텍스트 레이어가 있어 그대로 추출되고, 스캔본은 tesseract가 있으면 best-effort OCR 폴백.
+* **최초 1회 환경**(불특정 다수 배포 상정): `pip install -r requirements.txt` (또는 시스템 `poppler`). 머신 로컬 venv(`.venv-*`, gitignore)에 설치 — 헌법 §11.
+
+### ④ 소프트 폴백 모드 (Degraded Mode)
+* 원문 PDF를 확보하지 못한 레코드는 `resource_manifest.json`에 `status: abstract_only`로 남는다. 1차 정찰의 초록·메타데이터로 제한적 분석은 허용하되, 정보 밀도가 낮으므로 과도한 비약을 하지 않도록 경고를 표시한다.

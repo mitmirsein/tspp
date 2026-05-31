@@ -134,6 +134,29 @@ python scripts/research_fanout.py "<본문/주제>" \
 - 스키마: `skills/sermon-mentor/templates/meditation_seed.example.json`
 - 불변식: `origin_memo` 불가침(읽기전용) · 긴장은 `disposition`(open/resolving/resolved)으로 정직하게 · 근거는 EvidencePack 실제 레코드만.
 
+**1차 정찰 → 원문 입수 → 본문 추출 (3단계, 페이지 인용 보존)**
+
+fan-out은 *후보 리스트*만 만든다(초록은 선별 재료, 대필 재료 아님). 실제 분석은 설교자가 고른 원문 전문(全文)으로 한다.
+
+```bash
+# 1) 선별 리스트(HITL 화면) — 초록 보유분 우선·입수 링크·권장 파일명
+python scripts/evidence_list.py \
+  --evidence output/$RUN/EvidencePack.json \
+  --out      output/$RUN/evidence_list.md
+
+# 2) 설교자가 정예 2~3편을 골라 '권장 파일명'(DOI 슬러그) 그대로 내려받아 둔다:
+#    input/resources/$RUN/   ← 목회자 자산(gitignore·로컬 처리)
+
+# 3) 본문 추출(원문 페이지 번호 보존 = 정확한 인용)
+python scripts/resource_ingest.py $RUN
+#   → output/$RUN/resources/*.txt  (===== p.N ===== 페이지 마커)
+#     output/$RUN/resource_manifest.json  (파일↔레코드 DOI 매핑)
+```
+
+- **최초 1회 환경**: `pip install -r requirements.txt`(순수 파이썬 pypdf 기본) 또는 시스템 `poppler`. OCR된 PDF는 텍스트 레이어로 그대로 추출, 스캔본은 `tesseract` 있으면 OCR 폴백.
+- 에이전트는 `===== p.N =====` 마커로 `(저자 연도, p.N)` **정확 인용**을 만든다(유령인용 차단, 헌법 §7). 스크립트는 추출·매핑만, 산문은 에이전트(§11).
+- 원문 미입수 레코드는 매니페스트에 `abstract_only`(소프트 폴백) — 초록 기반 제한 분석은 허용하되 밀도 낮음 경고.
+
 ### ② (선택·opt-in) 설교자 보이스 추출 — `preacher_voice.json`
 
 자기 설교문 샘플 5~10편을 주면 **개인 목소리 지문**을 추출한다(대필 방지 안전장치).

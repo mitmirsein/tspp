@@ -34,6 +34,20 @@ def load_records(path: Path) -> list[dict]:
     return data.get("records") or data.get("evidence") or []
 
 
+def dl_name(r: dict) -> str:
+    """권장 다운로드 파일명 — resource_ingest의 DOI 슬러그 규칙과 일치(자동 매핑)."""
+    import re
+    doi = (r.get("doi") or "").strip()
+    if doi:
+        return doi.replace("/", "_") + ".pdf"
+    ck = (r.get("citekey") or "").strip()
+    if ck:
+        return ck + ".pdf"
+    t = re.sub(r"\s+", "-", (r.get("title") or "untitled").strip())
+    t = re.sub(r"[^0-9A-Za-z가-힣\-_.]", "", t)
+    return (t[:48] or "untitled") + ".pdf"
+
+
 def fmt_record(i: int, r: dict, abstract_chars: int) -> str:
     eng = ENGINE_LABEL.get(r.get("engine", ""), r.get("engine", "?"))
     title = str(r.get("title") or "(제목 없음)").strip()
@@ -58,6 +72,8 @@ def fmt_record(i: int, r: dict, abstract_chars: int) -> str:
         link = url
     if link:
         lines.append(f"- 입수: {link}")
+    # 권장 파일명(DOI 슬러그) — 그대로 저장하면 resource_ingest가 자동 매핑
+    lines.append(f"- 권장 파일명: `{dl_name(r)}`")
     # 초록(있으면) — 선별 판단 재료
     if abstract:
         ab = abstract if len(abstract) <= abstract_chars else abstract[:abstract_chars].rstrip() + "…"
@@ -100,12 +116,24 @@ def main() -> None:
     by_eng = Counter(ENGINE_LABEL.get(r.get("engine", ""), r.get("engine", "?")) for r in records)
     eng_line = " · ".join(f"{k} {v}" for k, v in by_eng.items())
 
+    run = ev.parent.name
     head = [
         "# 학술 자료 정찰 리스트 (1차 — HITL 선별용)",
         "",
         f"> 총 {len(records)}건 · 초록 보유 {n_ab}건 · 엔진별: {eng_line}",
-        "> 워크플로우: 이 리스트에서 입수할 원문을 골라 `input/resources/`에 배치(2단계) → LLM 본문 분석(3단계).",
         "> 초록은 *선별 재료*일 뿐, 없는 자료도 버리지 않았다(유령인용 차단은 원문 입수로).",
+        "",
+        "## 원문 입수 → 본문 추출 (2~3단계 · HITL)",
+        "",
+        "1. 아래에서 설교에 정말 도움이 될 **정예 2~3편**을 고른다.",
+        "2. 각 항목 **입수** 링크로 PDF를 내려받아 아래 폴더에 넣는다 "
+        "— 파일명은 **권장 파일명** 그대로(자동 매핑됨):",
+        f"   - `input/resources/{run}/`  *(목회자 자산 — gitignore·로컬 처리)*",
+        "3. 본문 추출(페이지 번호 보존 = 정확한 인용):",
+        f"   - `python3 scripts/resource_ingest.py {run}`",
+        "   - 최초 1회 환경: `pip install -r requirements.txt` (또는 시스템 `poppler`).",
+        "4. 에이전트가 추출 텍스트의 `===== p.N =====` 마커로 `(저자 연도, p.N)` 인용을 "
+        "만든다. 원문 미입수분은 초록 기반 소프트 폴백(밀도 낮음 경고).",
         "",
         "---",
         "",
