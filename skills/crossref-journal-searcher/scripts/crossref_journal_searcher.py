@@ -138,7 +138,8 @@ class CrossrefJournalSearcher:
         """Hits the Crossref API for a single filter chunk"""
         params = {
             "query": query,
-            "rows": str(limit)
+            "rows": str(limit),
+            "mailto": CONTACT_EMAIL,
         }
         if filter_str:
             params["filter"] = filter_str

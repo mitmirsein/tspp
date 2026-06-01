@@ -4,15 +4,23 @@ import time
 import json
 import os
 from datetime import datetime
-from dotenv import load_dotenv
 from pathlib import Path
 
-# Load environment variables
-load_dotenv()
-# Fallback to project root .env
-project_root_env = Path(__file__).resolve().parents[3] / ".env"
-if project_root_env.exists():
-    load_dotenv(project_root_env)
+def load_env_file(path: Path) -> None:
+    if not path.exists():
+        return
+    for line in path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        key = key.strip()
+        value = value.strip().strip("'\"")
+        os.environ.setdefault(key, value)
+
+
+# Fallback to project root .env without requiring python-dotenv.
+load_env_file(Path(__file__).resolve().parents[3] / ".env")
 API_KEY = os.getenv("SEMANTIC_SCHOLAR_API_KEY")
 BASE_URL = "https://api.semanticscholar.org/graph/v1"
 
@@ -54,7 +62,7 @@ def search_papers(query, limit=10, silent=False, fields_of_study=None):
     params = {
         "query": query,
         "limit": limit,
-        "fields": "title,authors,year,abstract,citationCount,venue,url,openAccessPdf"
+        "fields": "title,authors,year,abstract,citationCount,venue,url,openAccessPdf,externalIds"
     }
     # 도메인 필터: 법률·의학 등 무관 분야 논문 유입 차단
     if fields_of_study:
@@ -150,6 +158,7 @@ def main():
                     "venue":        p.get("venue", ""),
                     "citations":    p.get("citationCount", 0),
                     "url":          p.get("url", ""),
+                    "doi":          (p.get("externalIds") or {}).get("DOI", ""),
                     "abstract":     p.get("abstract", ""),
                     "pdf_url":      (p.get("openAccessPdf") or {}).get("url", "")
                 }

@@ -38,6 +38,7 @@ VENUE_KEYS = ("venue", "journal", "publisher", "container_title", "source")
 DOI_KEYS = ("doi", "DOI")
 ISBN_KEYS = ("isbn", "ISBN")
 URL_KEYS = ("url", "URL", "link", "uri")
+PDF_URL_KEYS = ("pdf_url", "pdfUrl", "open_access_pdf_url", "openAccessPdfUrl")
 ABSTRACT_KEYS = ("abstract", "summary", "scope_note")
 CITEKEY_KEYS = ("citekey", "citationKey", "bbt_citekey")
 LOCAL_PDF_KEYS = ("local_pdf", "localPdf", "pdf_path")
@@ -101,6 +102,7 @@ def normalize_record(raw: dict, engine: str) -> dict:
             doi = m.group(0).rstrip('.')
     isbn = _first(raw, ISBN_KEYS)
     url = _first(raw, URL_KEYS)
+    pdf_url = (_first(raw, PDF_URL_KEYS) or "").strip()
     citekey = (_first(raw, CITEKEY_KEYS) or "").strip()
     local_pdf = (_first(raw, LOCAL_PDF_KEYS) or "").strip()
     lod = raw.get("lod") if isinstance(raw.get("lod"), dict) else {}
@@ -114,6 +116,7 @@ def normalize_record(raw: dict, engine: str) -> dict:
         "doi": doi,
         "isbn": isbn,
         "url": url,
+        "pdf_url": pdf_url,
         "abstract": (_first(raw, ABSTRACT_KEYS) or "")[:500],
         "verification_status": "identifier_present" if has_id else "no_identifier",
     }
@@ -138,6 +141,7 @@ ENGINE_PRIORITY = {
     "zotero-local": 0,
     "crossref-journal-searcher": 10,
     "kci-api-searcher": 11,
+    "nlk-ejournal-searcher": 11,
     "nlk-biblio-searcher": 11,
     "nlk-subject-searcher": 12,
     "ixtheo-searcher": 12,
@@ -154,7 +158,7 @@ def _priority(engine: str) -> int:
 def _merge_supplemental(into: dict, extra: dict) -> None:
     """dedup으로 흡수된 후속 레코드의 보조 정보를 1차 레코드에 보강한다.
     winner의 풍부한 필드는 건드리지 않고, winner가 비워 둔 칸만 채운다."""
-    for k in ("local_pdf", "citekey", "abstract", "venue", "year", "isbn", "url"):
+    for k in ("local_pdf", "citekey", "abstract", "venue", "year", "isbn", "url", "pdf_url"):
         if not into.get(k) and extra.get(k):
             into[k] = extra[k]
     if not into.get("authors") and extra.get("authors"):

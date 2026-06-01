@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-r"""delivery_pack.py — 설교 원고의 *전달 준비* 측정 (CONCEPT §4-4·§6 delivery_pack).
+r"""delivery_pack.py — 설교 원고의 *전달 준비* 측정 (전달 준비 원칙·§6 delivery_pack).
 
 manuscript-expander 의 보조: 전체 원고를 강단 전달 직전에 가늠한다 — ① 전체·섹션별
 전달 시간 ② 낭독 보조(긴 문장 호흡·원어/외국어 발음·숫자 읽기·긴 어절). 산문(언어

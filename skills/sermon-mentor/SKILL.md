@@ -48,10 +48,10 @@ references_path: "./references"
 ```bash
 python scripts/research_fanout.py "<본문/주제>" \
   --keywords-file output/<run>/meditation_seed.json \
-  --engines kci-api-searcher,nlk-biblio-searcher,semantic-scholar,crossref-journal-searcher \
-  --parallel --out output/<run>/EvidencePack.json
+  --engines kci-api-searcher,nlk-ejournal-searcher,semantic-scholar,crossref-journal-searcher \
+  --per-keyword-limit 3 --out output/<run>/EvidencePack.json
 ```
-- 4엔진 모두 API 방식(속도 부담 적음). 산출 `EvidencePack.json`은 설교에 인용되진 않으나 설교자가 보는 자료.
+- 4엔진 모두 API 방식(한국어 키워드→KCI·NLK전자저널, 영어 키워드→Semantic Scholar·Crossref). 산출 `EvidencePack.json`은 설교에 인용되진 않으나 설교자가 보는 자료.
 
 ### Phase 4 — 자료 정착 심화 (Grounding)
 - 자료가 묵상을 **지지/도전/확장**하는지 매핑. `developed.supporting_refs`로 근거를 단다(유령인용 차단). 도전 자료는 평탄화 말고 `tensions`에 반영.
@@ -62,7 +62,7 @@ python scripts/research_fanout.py "<본문/주제>" \
 ### Phase 6 — 씨앗 산출 (HITL)
 - `meditation_seed.json`/`.md` 산출 후 **사용자 승인**(`hitl.approved`). 승인 전 다음 단계로 넘기지 않는다.
 - 스키마: [templates/meditation_seed.example.json](./templates/meditation_seed.example.json)
-- **보이스(L2)는 여기서 잡지 않는다** — 설교 개요 진입 직전 확정(CONCEPT §5).
+- **보이스(L2)는 여기서 잡지 않는다** — 설교 개요 진입 직전 확정(보이스 고정 원칙).
 
 ## 3. Gotchas (피해야 할 함정)
 

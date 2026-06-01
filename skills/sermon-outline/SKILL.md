@@ -16,7 +16,7 @@ references_path: "./references"
 
 ## 1. Overview
 
-상류 산출물을 받아 **본문에 충실한 설교 개요(`sermon_outline.md`)**를 빚는다. 보이스 아키텍처(추출→3층→주입)와 묵상 멘토(씨앗)를 *실제 설교*로 잇는 고리다. CONCEPT §5 Phase 5(메시지+개요)→7(작성)→8(감사).
+상류 산출물을 받아 **본문에 충실한 설교 개요(`sermon_outline.md`)**를 빚는다. 보이스 아키텍처(추출→3층→주입)와 묵상 멘토(씨앗)를 *실제 설교*로 잇는 고리다. 보이스 고정 원칙 Phase 5(메시지+개요)→7(작성)→8(감사).
 
 ```
 meditation_seed.json (sermon-mentor·HITL)  ┐
@@ -52,7 +52,7 @@ python scripts/outline_preflight.py \
 - **보이스 충실** — lexicon_avoid 회피, persona 어조 차용(견해 아님), 청중 음높이.
 
 ### Phase 3 — Foundation Gate (본문 정합)
-작성 후 binding 점검: 각 논점·적용이 본문에서 나오는가? `message.eisegesis_risk`가 high인 후보는 본문 재정착 또는 제외. **적용이 본문을 왜곡하면 멈춘다**(eisegesis 차단 — CONCEPT §4-1 hard gate).
+작성 후 binding 점검: 각 논점·적용이 본문에서 나오는가? `message.eisegesis_risk`가 high인 후보는 본문 재정착 또는 제외. **적용이 본문을 왜곡하면 멈춘다**(eisegesis 차단 — 본문 정합 hard gate hard gate).
 
 ### Phase 4 — 호밀레틱 계기판
 ```bash
@@ -65,7 +65,7 @@ python scripts/homiletic_audit.py --draft output/<run>/sermon_outline.md \
 - **보정 주의**: 계기판은 *구어 산문*(원고) 기준이다. 골격 개요(불릿·표제)는 본래 hapnida_ratio가 낮아 hapnida 기반 *강사화* 신호가 아티팩트일 수 있다 — 개요의 **산문 단락**(도입·적용·결단·기도)을 기준으로 읽는다. 전체 원고로 확장했을 때 더 정확.
 
 ### Phase 5 — HITL Sign-off
-설교자 승인(`sermon_outline` frontmatter `approved`). (선택) 전체 원고 확장은 별도 — 개요가 ★ 기본 산출(CONCEPT §6).
+설교자 승인(`sermon_outline` frontmatter `approved`). (선택) 전체 원고 확장은 별도 — 개요가 ★ 기본 산출(개요 기본 산출 원칙).
 
 ## 3. Gotchas (피해야 할 함정)
 

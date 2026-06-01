@@ -2,7 +2,7 @@
 
 > **TSPP** = Theology Sermon Preparation Pipeline — 설교 *준비*를 돕는 단독 오케스트레이션 도구.
 > **돕되, 대체하지 않는다.** 강단의 말과 영적 권위는 설교자의 것이다(→ [`CLAUDE.md`](./CLAUDE.md) 목회 윤리 헌법).
-> 이 문서는 *실제로 돌리는 법*을 다룬다. 설계 근거는 `CONCEPT.md`, 세션 인계는 `HANDOFF.md`.
+> 이 문서는 *실제로 돌리는 법*을 다룬다. 빠른 진입점은 `START_HERE.md`, 전체 개요는 `README.md`, 운영 규칙은 `AGENTS.md`/`CLAUDE.md`/`GEMINI.md`를 따른다.
 
 ---
 
@@ -42,9 +42,9 @@
 ```
 tspp/
 ├─ CLAUDE.md · AGENTS.md · GEMINI.md   목회 윤리 헌법 12조 (동일 3파일)
-├─ CONCEPT.md                          설계 본체
-├─ HANDOFF.md                          세션 인계
-├─ MANUAL.md                           ← 이 문서
+├─ START_HERE.md                       IDE/에이전트용 빠른 진입점
+├─ README.md                           프로젝트 개요와 빠른 시작
+├─ MANUAL.md                           운영 매뉴얼(이 문서)
 ├─ VENDOR.md                           fan-out 엔진 출처(TAWP vendored)
 ├─ scripts/                            stdlib 측정·게이트 스크립트
 │   ├─ voice_ingest.py   voice_resolve.py   homiletic_audit.py
@@ -74,8 +74,8 @@ tspp/
 |---|---|---|---|
 | `kci-api-searcher` | ko | **필수** `KCI_OPEN_API_KEY` | uv 격리 |
 | `nlk-ejournal-searcher` | ko | **필수** `NLK_DATA_GO_KR_KEY` | stdlib(urllib+ElementTree) |
-| `crossref-journal-searcher` | en | **키 없음**(public). polite pool용 `CROSSREF_MAILTO`(선택) | `requests` |
-| `semantic-scholar` | en | **선택** `SEMANTIC_SCHOLAR_API_KEY`(없으면 3초당 1회, 있으면 한도 상향) | `requests` |
+| `crossref-journal-searcher` | en | **키 없음**(public REST API). polite pool용 `CROSSREF_MAILTO`(선택) | `requests` |
+| `semantic-scholar` | en | **선택** `SEMANTIC_SCHOLAR_API_KEY`(Graph API, 없으면 3초당 1회, 있으면 한도 상향) | `requests` |
 
 - **인증 구분**(`registry.json`) — `env`(필수: 없으면 `research_fanout`이 해당 엔진 자동 스킵 = degraded) / `env_optional`(선택: 없어도 동작, 있으면 한도·안정성 향상).
 - **필수 키는 KCI·NLK전자저널뿐.** 셸 환경변수로 export(예: dev 루트 `.env`). KCI는 `uv sync` 필요(uv.lock), NLK전자저널은 순수 stdlib(설치 불필요).
@@ -87,6 +87,12 @@ tspp/
 
 **키워드별 개별 검색(권장)** — `--keywords-file`로 키워드 세트를 주면 키워드마다 따로 검색해 합산·중복제거한다(AND 한줄 결합이 NLK·KCI에서 0건 유발하던 문제 해소). `--per-keyword-limit`(기본 3)로 키워드당 결과 수 조절. 키워드 세트는 `meditation_seed.json`의 `evidence.keywords_used.{ko,en}`를 그대로 사용.
 
+**검색 대상 및 방법(고정 라우팅)**:
+- KCI: `evidence.keywords_used.ko`의 **한글 키워드**를 `open.kci.go.kr` articleSearch OpenAPI에 키워드별로 질의한다.
+- NLK전자저널: `evidence.keywords_used.ko`의 **한글 키워드**를 data.go.kr 전자저널 API `label` 파라미터로 질의한다.
+- Semantic Scholar: `evidence.keywords_used.en`의 **영문 키워드**를 Graph API `/paper/search`에 질의하고 DOI(`externalIds.DOI`)와 OA PDF(`openAccessPdf.url`)를 보존한다.
+- Crossref: `evidence.keywords_used.en`의 **영문 키워드**를 REST API `/works`에 질의하고, curated theology journal ISSN 필터와 `mailto` polite 파라미터를 함께 사용한다.
+
 **선별 리스트(HITL 1단계)** — `EvidencePack.json` → 사람이 읽는 선별 화면:
 ```bash
 python scripts/evidence_list.py --evidence output/$RUN/EvidencePack.json \
@@ -96,7 +102,7 @@ python scripts/evidence_list.py --evidence output/$RUN/EvidencePack.json \
 
 ### 1.4 머신·git 주의 (Syncthing 환경)
 - `.git`과 `.venv*`는 **머신 로컬**(`.stignore`로 Syncthing 제외). 한 맥의 환경/레포를 다른 맥과 공유하지 않는다.
-- 커밋은 `.git`을 보유한 머신에서만 한다(→ `HANDOFF.md §6.1`).
+- 커밋은 `.git`을 보유한 머신에서만 한다(→ `AGENTS.md 개발·검증 수칙`).
 
 ---
 
@@ -151,10 +157,12 @@ python scripts/evidence_list.py \
 python scripts/resource_ingest.py $RUN
 #   → output/$RUN/resources/*.txt  (===== p.N ===== 페이지 마커)
 #     output/$RUN/resource_manifest.json  (파일↔레코드 DOI 매핑)
+#     output/$RUN/resource_analysis_packet.md  (LLM 분석 진입 패킷)
 ```
 
-- **최초 1회 환경**: `pip install -r requirements.txt`(순수 파이썬 pypdf 기본) 또는 시스템 `poppler`. OCR된 PDF는 텍스트 레이어로 그대로 추출, 스캔본은 `tesseract` 있으면 OCR 폴백.
-- 에이전트는 `===== p.N =====` 마커로 `(저자 연도, p.N)` **정확 인용**을 만든다(유령인용 차단, 헌법 §7). 스크립트는 추출·매핑만, 산문은 에이전트(§11).
+- **추출 백엔드 선택**: 기본 자동 모드는 MS_Dev의 `.skills/pdf-extractor` Core 엔진(`opendataloader`)을 우선 사용하고, 없으면 `pymupdf` → `pdfplumber` → `pypdf` → `pdftotext` 순으로 폴백한다. 텍스트 레이어가 빈약한 스캔본은 `tesseract`가 있으면 OCR 폴백한다.
+- **최초 1회 환경**: MS_Dev 워크스페이스에서는 `.skills/pdf-extractor`가 있으면 `uv run` 기반 `opendataloader`를 사용한다. 범용 배포/외부 환경에서는 `pip install -r requirements.txt`(pypdf 기본) 또는 시스템 `poppler`를 준비한다.
+- 에이전트는 `resource_analysis_packet.md`를 출발점으로 삼고, 추출 텍스트의 `===== p.N =====` 마커로 `(저자 연도, p.N)` **정확 인용**을 만든다(유령인용 차단, 헌법 §7). 스크립트는 추출·매핑·분석 패킷 생성만, 산문은 에이전트(§11).
 - 원문 미입수 레코드는 매니페스트에 `abstract_only`(소프트 폴백) — 초록 기반 제한 분석은 허용하되 밀도 낮음 경고.
 
 ### ② (선택·opt-in) 설교자 보이스 추출 — `preacher_voice.json`
@@ -302,4 +310,4 @@ python scripts/outline_preflight.py \
 
 ---
 
-*MS_Dev · TSPP — 설교 준비 파이프라인. 기능보다 헌법이 먼저다(→ `CLAUDE.md`). 설계는 `CONCEPT.md`, 인계는 `HANDOFF.md`.*
+*MS_Dev · TSPP — 설교 준비 파이프라인. 기능보다 헌법이 먼저다(→ `CLAUDE.md`).*

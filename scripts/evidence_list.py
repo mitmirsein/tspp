@@ -59,6 +59,7 @@ def fmt_record(i: int, r: dict, abstract_chars: int) -> str:
     venue = str(r.get("venue") or "").strip()
     doi = (r.get("doi") or "").strip()
     url = (r.get("url") or "").strip()
+    pdf_url = (r.get("pdf_url") or "").strip()
     abstract = (r.get("abstract") or "").strip()
 
     head = f"### {i}. {title}"
@@ -66,12 +67,16 @@ def fmt_record(i: int, r: dict, abstract_chars: int) -> str:
     lines = [head, f"- {meta}"]
     # 원문 입수 경로(2단계용)
     link = ""
-    if doi:
+    if pdf_url:
+        link = pdf_url
+    elif doi:
         link = f"https://doi.org/{doi}" if not doi.startswith("http") else doi
     elif url:
         link = url
     if link:
         lines.append(f"- 입수: {link}")
+    if pdf_url and doi:
+        lines.append(f"- DOI: https://doi.org/{doi}")
     # 권장 파일명(DOI 슬러그) — 그대로 저장하면 resource_ingest가 자동 매핑
     lines.append(f"- 권장 파일명: `{dl_name(r)}`")
     # 초록(있으면) — 선별 판단 재료

@@ -24,7 +24,7 @@ import sys
 from collections import Counter
 from pathlib import Path
 
-# ── 권장 샘플 수 (CONCEPT F11) ─────────────────────────────────────────────
+# ── 권장 샘플 수 (샘플 수 권장 원칙) ─────────────────────────────────────────────
 MIN_SAMPLES = 3          # 미만이면 부분 폴백 신호
 RECOMMENDED_SAMPLES = 5  # 5~10편 권장
 

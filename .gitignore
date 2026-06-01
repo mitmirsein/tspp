@@ -25,7 +25,7 @@ input/
 sermon_samples/
 *.local.json
 
-# --- 비밀·환경변수 (API 키: KCI_OPEN_API_KEY·NLK_SEARCH_API_KEY) ---
+# --- 비밀·환경변수 (API 키: KCI_OPEN_API_KEY·NLK_DATA_GO_KR_KEY 등) ---
 .env
 .env.*
 !.env.example

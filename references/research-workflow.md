@@ -19,6 +19,11 @@
 > NLK전자저널 키: `NLK_DATA_GO_KR_KEY`(data.go.kr 일반 인증키, nl.go.kr `NLK_SEARCH_API_KEY`와 별개).
 > 초록 채움률은 엔진·쿼리별 편차(KCI 충실 / Crossref·전자저널 부분 / S2 가변) — 없어도 리스트에서 버리지 않는다(§3).
 
+**검색 방법 고정**:
+- `ko` 키워드: KCI OpenAPI `articleSearch` + NLK전자저널 data.go.kr API `label` 검색.
+- `en` 키워드: Semantic Scholar Graph API `/paper/search` + Crossref REST API `/works`.
+- 각 키워드는 따로 검색하여 합산하고, EvidencePack 생성 단계에서 DOI/제목 기준 중복 제거한다.
+
 ---
 
 ## 2. 3단계 수집 워크플로우 (3-Stage Workflow)
@@ -32,7 +37,7 @@ TSPP는 API 검색 결과에만 의존해 최종 원고를 작성하지 않고, 
 
 ### 1단계: 1차 정찰 (Discovery Phase)
 * **목표**: 완벽한 초록 분석이 아니라, 설교자가 선별할 수 있는 **'식별 정보(제목/저자/DOI)'와 '원문 입수 경로(링크)'**를 정직하게 제공하는 것입니다.
-* **작동**: KCI, NLK전자저널, Crossref, Semantic Scholar를 키워드별로 가동하여 후보 리스트를 추출합니다. API 응답의 초록 필드가 비어있더라도 유용한 연구 목록이라면 필터링(삭제)하지 않고 리스트에 남겨둡니다.
+* **작동**: KCI, NLK전자저널, Crossref, Semantic Scholar를 키워드별로 가동하여 후보 리스트를 추출합니다. API 응답의 초록 필드가 비어있더라도 유용한 연구 목록이라면 필터링(삭제)하지 않고 리스트에 남겨둡니다. Semantic Scholar의 OA PDF URL과 Crossref/KCI DOI 링크는 원문 입수 링크로 보존합니다.
 
 ### 2단계: HITL 원문 입수 (Ingestion Phase)
 * **목표**: 실제 분석에 사용할 고밀도 학술 원문(Full Text)을 로컬 환경에 확보합니다.
@@ -58,9 +63,9 @@ TSPP는 API 검색 결과에만 의존해 최종 원고를 작성하지 않고, 
 * **매핑 단계**(`resource_ingest.match_record`): ① 파일명 stem == DOI 슬러그(정확) → ② DOI 부분 포함 → ③ citekey → ④ 제목 토큰 자카드(파일명+첫 페이지 텍스트 vs 레코드 제목, ≥0.5). DOI 없는 소수 레코드는 제목 슬러그로 폴백.
 
 ### ③ 본문 추출 — 페이지 번호 보존 (Citation-Safe Extraction)
-* `python3 scripts/resource_ingest.py <run>` → 입수 PDF/텍스트를 **페이지 마커가 박힌 텍스트**로 추출하고 `resource_manifest.json`(파일↔레코드 매핑)을 만든다. 추출물은 `output/<run>/resources/`(gitignore).
+* `python3 scripts/resource_ingest.py <run>` → 입수 PDF/텍스트를 **페이지 마커가 박힌 텍스트**로 추출하고 `resource_manifest.json`(파일↔레코드 매핑) 및 `resource_analysis_packet.md`(LLM 분석 진입 패킷)를 만든다. 추출물은 `output/<run>/resources/`(gitignore).
 * **인용을 위한 페이지 보존**: 각 페이지를 `===== p.N =====` 마커로 구분 → 에이전트가 `(저자 연도, p.N)` 정확 인용을 만든다(유령인용 차단, §7). 스크립트는 추출·매핑만 하고 산문(요약·분석)은 짓지 않는다(§11) — 분석은 에이전트가 페이지 표시 텍스트를 읽고 한다.
-* **백엔드(있는 것 자동 선택)**: pymupdf > pdfplumber > **pypdf**(requirements.txt 기본·순수 파이썬·BSD) > pdftotext(poppler). OCR된 PDF(요즘 추세)는 텍스트 레이어가 있어 그대로 추출되고, 스캔본은 tesseract가 있으면 best-effort OCR 폴백.
+* **백엔드(있는 것 자동 선택)**: `.skills/pdf-extractor`의 opendataloader Core > pymupdf > pdfplumber > **pypdf**(requirements.txt 기본·순수 파이썬·BSD) > pdftotext(poppler). OCR된 PDF(요즘 추세)는 텍스트 레이어가 있어 그대로 추출되고, 스캔본은 tesseract가 있으면 best-effort OCR 폴백.
 * **최초 1회 환경**(불특정 다수 배포 상정): `pip install -r requirements.txt` (또는 시스템 `poppler`). 머신 로컬 venv(`.venv-*`, gitignore)에 설치 — 헌법 §11.
 
 ### ④ 소프트 폴백 모드 (Degraded Mode)

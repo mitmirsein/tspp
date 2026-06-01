@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-r"""voice_resolve.py — 보이스 3층을 합성해 *주입할 보이스*를 산출한다 (CONCEPT §4-5·§5).
+r"""voice_resolve.py — 보이스 3층을 합성해 *주입할 보이스*를 산출한다 (보이스 3층 원칙·§5).
 
 추출(voice_ingest) → **주입(이 스크립트)** 의 연결 고리.
 

@@ -16,7 +16,7 @@ references_path: "./references"
 
 ## 1. Overview
 
-설교자가 **승인한 개요(`sermon_outline.md`)**를 받아, 보이스에 충실한 **전체 구어 설교 원고(`full_manuscript.md`, 6~10쪽)**로 확장한다. 개요의 *뼈대*에 살을 붙이되 — 그 살은 *그 설교자의* 것이어야 한다. CONCEPT §5 Phase 7·§6(선택 산출).
+설교자가 **승인한 개요(`sermon_outline.md`)**를 받아, 보이스에 충실한 **전체 구어 설교 원고(`full_manuscript.md`, 6~10쪽)**로 확장한다. 개요의 *뼈대*에 살을 붙이되 — 그 살은 *그 설교자의* 것이어야 한다. 보이스 고정 원칙 Phase 7·§6(선택 산출).
 
 ```
 sermon_outline.md (승인) + writing_brief.json + resolved_voice.json
@@ -24,7 +24,7 @@ sermon_outline.md (승인) + writing_brief.json + resolved_voice.json
   → delivery_pack.py (시간·섹션·낭독) + homiletic_audit.py (계기판) → HITL sign-off
 ```
 
-> **제1원칙**: 전체 원고는 **★ 기본이 아니라 선택**이다(CONCEPT §6). 개요가 기본 산출인 이유는 대필 위험 때문 — 전체 원고를 AI가 쓸수록 "설교자가 더 깊이 준비한 자기 설교"에서 "AI가 쓴 남의 글"로 미끄러지기 쉽다. 그러므로 이 스킬은 **개요의 논리·구조·보이스를 그대로 펴는** 확장이지 *새로 쓰는* 작업이 아니다. 방법론: [expansion-method.md](./references/expansion-method.md). 헌법: `../../CLAUDE.md`.
+> **제1원칙**: 전체 원고는 **★ 기본이 아니라 선택**이다(개요 기본 산출 원칙). 개요가 기본 산출인 이유는 대필 위험 때문 — 전체 원고를 AI가 쓸수록 "설교자가 더 깊이 준비한 자기 설교"에서 "AI가 쓴 남의 글"로 미끄러지기 쉽다. 그러므로 이 스킬은 **개요의 논리·구조·보이스를 그대로 펴는** 확장이지 *새로 쓰는* 작업이 아니다. 방법론: [expansion-method.md](./references/expansion-method.md). 헌법: `../../CLAUDE.md`.
 
 ## 2. Workflow — 5-Phase
 

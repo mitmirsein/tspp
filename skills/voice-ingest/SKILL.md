@@ -81,7 +81,7 @@ python scripts/voice_ingest.py \
 - [templates/preacher_voice.example.json](./templates/preacher_voice.example.json) — L1-개인 보이스 카드 스키마.
 - `../../scripts/voice_ingest.py` — 객관 계량 엔진(순수 stdlib).
 - `../../scripts/voice_resolve.py` — **소비측**: 추출 카드(L1-개인) + L1 보편 + L2 상황을 합성해 작성 단계 주입(`resolved_voice.json` + 강단 의례 injection_block).
-- (자매 부품) `../../references/homiletic-voice.md`(L1 보편 헌장·폴백) ✅ · `../../data/homiletic_voice_palette.json`(L2-상황) ✅ — CONCEPT §4-5. 보이스 3층 완성.
+- (자매 부품) `../../references/homiletic-voice.md`(L1 보편 헌장·폴백) ✅ · `../../data/homiletic_voice_palette.json`(L2-상황) ✅ — 보이스 3층 원칙. 보이스 3층 완성.
 
 ---
 *MS_Dev · TSPP · voice-ingest v0.1 — TAWP authorial-voice의 설교 도메인 전도 + 객관 계량 정착. 보이스는 설교 개요(Phase 5) 진입 전에 L1-개인 + L2-상황으로 고정된다.*

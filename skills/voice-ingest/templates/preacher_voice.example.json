@@ -1,6 +1,6 @@
 {
   "schema": "tspp.preacher_voice/1",
-  "_comment": "설교자 개인 보이스 카드(L1-개인, CONCEPT §4-5). opt-in — 등록하지 않으면 호밀레틱 L1 보편 헌장(references/homiletic-voice.md)만 적용(정상 degraded). 핵심 불변식 ①: 이 카드의 모든 차원은 voice_signals.json 측정값 + 실제 샘플 인용에 정착되어야 한다(LLM 일반론 금지). ②: 추출본은 *초안*이며 HITL이 교정·승인하기 전엔 확정이 아니다(hitl.approved=false). ③: 대필 방지 장치 — AI가 남의 매끈한 문체를 입히는 게 아니라 설교자 자신의 문체를 학습해 되돌려준다. 아래 값은 형식 예시(가상의 설교자)다.",
+  "_comment": "설교자 개인 보이스 카드(L1-개인, 보이스 3층 원칙). opt-in — 등록하지 않으면 호밀레틱 L1 보편 헌장(references/homiletic-voice.md)만 적용(정상 degraded). 핵심 불변식 ①: 이 카드의 모든 차원은 voice_signals.json 측정값 + 실제 샘플 인용에 정착되어야 한다(LLM 일반론 금지). ②: 추출본은 *초안*이며 HITL이 교정·승인하기 전엔 확정이 아니다(hitl.approved=false). ③: 대필 방지 장치 — AI가 남의 매끈한 문체를 입히는 게 아니라 설교자 자신의 문체를 학습해 되돌려준다. 아래 값은 형식 예시(가상의 설교자)다.",
 
   "preacher_id": "example-preacher",
   "display_name": "(설교자 표시명 — 선택)",
@@ -72,7 +72,7 @@
   },
 
   "ethics": {
-    "_comment": "CONCEPT §8 목회 윤리 헌법 연동.",
+    "_comment": "목회 윤리 헌법 목회 윤리 헌법 연동.",
     "privacy": "샘플·카드는 설교자 자산 — 로컬 처리, 외부 전송·학습 데이터화 금지.",
     "purpose": "대필 방지. 이 카드는 설교자의 목소리를 보존·증폭하기 위한 것이지 AI가 설교를 대신 쓰기 위한 것이 아니다.",
     "authority": "영적 권위·최종 sign-off는 설교자 귀속."

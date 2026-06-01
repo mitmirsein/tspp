@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "_note": "호밀레틱 L2-상황 보이스 팔레트 (CONCEPT §4-5). 학술 voice_palette.json의 *설교 도메인 전도판*. 결정적 차이: 학술 팔레트는 단일 축(주제별 톤)이지만, 설교 register는 본문장르 × tier × 절기 × 청중의 4축 합성이다. 모든 값은 L1 보편 헌장(references/homiletic-voice.md)을 *공유*하는 register 변주이며 다른 정체성이 아니다 — 어떤 값도 '회중을 채점한다'를 register로 가질 수 없다(L1 §3-②가 막는 부패이지 변주가 아니다). 보이스는 L1-개인(preacher_voice.json) + 이 L2를 합쳐 설교 개요(Phase 5) 진입 *전*에 고정한다. persona(어조 차용원)는 5종(설교 직임 = tier 5종과 정렬): personas/Preacher_*.md. tier.persona_ref가 그 음성 초상을 가리키고, text_genre.tone_affinity가 장르가 어느 어조를 빌리는지 가리킨다. persona는 *어조*만 차용하지 견해·신학입장 인용이 아니며, 모두 L1 보편을 공유한다(TSPP 자체 파일 — TAWP/TOS 런타임 의존 아님). scripts/voice_resolve.py가 이 팔레트를 소비해 L1보편+L1개인+L2 를 합성한다(구조 합성; L2 stance 한 문장 렌더는 에이전트의 강단 의례에서 — 스크립트는 산문을 짓지 않는다).",
+  "_note": "호밀레틱 L2-상황 보이스 팔레트 (보이스 3층 원칙). 학술 voice_palette.json의 *설교 도메인 전도판*. 결정적 차이: 학술 팔레트는 단일 축(주제별 톤)이지만, 설교 register는 본문장르 × tier × 절기 × 청중의 4축 합성이다. 모든 값은 L1 보편 헌장(references/homiletic-voice.md)을 *공유*하는 register 변주이며 다른 정체성이 아니다 — 어떤 값도 '회중을 채점한다'를 register로 가질 수 없다(L1 §3-②가 막는 부패이지 변주가 아니다). 보이스는 L1-개인(preacher_voice.json) + 이 L2를 합쳐 설교 개요(Phase 5) 진입 *전*에 고정한다. persona(어조 차용원)는 5종(설교 직임 = tier 5종과 정렬): personas/Preacher_*.md. tier.persona_ref가 그 음성 초상을 가리키고, text_genre.tone_affinity가 장르가 어느 어조를 빌리는지 가리킨다. persona는 *어조*만 차용하지 견해·신학입장 인용이 아니며, 모두 L1 보편을 공유한다(TSPP 자체 파일 — TAWP/TOS 런타임 의존 아님). scripts/voice_resolve.py가 이 팔레트를 소비해 L1보편+L1개인+L2 를 합성한다(구조 합성; L2 stance 한 문장 렌더는 에이전트의 강단 의례에서 — 스크립트는 산문을 짓지 않는다).",
 
   "shares_l1": "references/homiletic-voice.md",
   "consumes": "preacher_voice.json(L1-개인, 있으면) · audience_profile.json(청중, 목회자 입력) · lectionary(절기, 선택)",
@@ -196,7 +196,7 @@
         "연령(age)": "회중 연령대의 언어·예화 접점(목회자 입력 기준)."
       },
       "hard_rule": "audience_profile.json 없으면 이 축은 비활성 — 보편 폴백. 회중을 지어내 register를 좁히지 않는다.",
-      "input_ref": "input/audience_profile.json (목회자 작성·로컬 자산, CONCEPT §4-2)",
+      "input_ref": "input/audience_profile.json (목회자 작성·로컬 자산, 회중 프로파일 원칙)",
       "schema_ref": "data/audience_profile.example.json (스키마·예시; 5차원이 voice_resolve AUDIENCE_KEYS와 일치)"
     }
   },
@@ -214,7 +214,7 @@
   },
 
   "theological_lens": {
-    "_comment": "신학 전통(개혁·루터·해방·오순절·목회 등)은 register와 *다른 축*이다(HANDOFF §2 확인 — TOS lenses/ 18종은 신학 관점 축이라 보이스 L1/L2와 충돌 없음). register(음색)가 아니라 *관점*이므로 이 팔레트의 4축에 포함하지 않는다. 목회자의 신학 전통은 별도 선택 입력이며, 향후 TOS lenses를 *관점 입력*으로 연결할 여지(CONCEPT §4-5). TSPP 단독 레포 원칙상 런타임 의존은 두지 않는다.",
+    "_comment": "신학 전통(개혁·루터·해방·오순절·목회 등)은 register와 *다른 축*이다(TOS lenses/ 18종은 신학 관점 축이라 보이스 L1/L2와 충돌 없음). register(음색)가 아니라 *관점*이므로 이 팔레트의 4축에 포함하지 않는다. 목회자의 신학 전통은 별도 선택 입력이며, 향후 TOS lenses를 *관점 입력*으로 연결할 여지(보이스 3층 원칙). TSPP 단독 레포 원칙상 런타임 의존은 두지 않는다.",
     "axis": "orthogonal_to_register",
     "optional_future_input": "TOS lenses/ (reformed·lutheran·liberation·pentecostal·pastoral 등)"
   },

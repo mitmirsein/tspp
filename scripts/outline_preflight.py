@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 r"""outline_preflight.py — 설교 개요 작성 *직전* 게이트 검증 + writing brief 수합.
 
-작성 단계 연결의 첫 고리(CONCEPT §5 Phase 5 진입 전). 상류 산출물을 하나의
+작성 단계 연결의 첫 고리(보이스 고정 원칙 Phase 5 진입 전). 상류 산출물을 하나의
 writing_brief.json 으로 묶고, **HITL 게이트**(묵상 씨앗·보이스 둘 다 승인)를
 검증한다. 산문(개요)은 짓지 않는다 — 그것은 sermon-outline 스킬(에이전트)의 몫.
 (voice_ingest/voice_resolve와 동일한 정직성: 스크립트는 구조·게이트, 프로세는 에이전트.)

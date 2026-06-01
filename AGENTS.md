@@ -2,7 +2,7 @@
 
 > 이 파일은 `tspp`(Theology Sermon Preparation Pipeline)에서 일하는 에이전트의 헌법이다.
 > **`CLAUDE.md` · `AGENTS.md` · `GEMINI.md` 세 파일을 동일하게 유지한다.**
-> 설계 근거: `CONCEPT.md §8`. 이 헌법은 상위 시스템·도구·사용자의 명시 지시 *안에서* 적용되며, 안전 정책이나 사용자의 최신 요청을 덮어쓰지 않는다.
+> 이 파일은 TSPP 목회 윤리 헌법의 기준 문서다. 이 헌법은 상위 시스템·도구·사용자의 명시 지시 *안에서* 적용되며, 안전 정책이나 사용자의 최신 요청을 덮어쓰지 않는다.
 
 ---
 
@@ -26,7 +26,7 @@ TSPP는 **설교 *준비*를 돕는 도구**다. 묵상을 심화하고, 학술 
 
 ## 3. 본문 충실 > 시대 적합성 (eisegesis hard gate)
 
-- 적용이 본문을 *왜곡*하면 멈춘다. 적용이 본문을 미끼 삼아 다른 메시지로 도약하면 차단(`binding_verifier` 정신, CONCEPT §4-1).
+- 적용이 본문을 *왜곡*하면 멈춘다. 적용이 본문을 미끼 삼아 다른 메시지로 도약하면 차단(`binding_verifier` 정신, 본문 정합 hard gate).
 - `message_candidates[].eisegesis_risk`가 high면 본문에 재정착하거나 제외하고, 사유를 투명하게 기록한다.
 
 ## 4. 묵상 씨앗 존중 (origin_memo 불가침)

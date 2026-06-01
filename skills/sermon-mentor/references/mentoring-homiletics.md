@@ -67,10 +67,10 @@ research-mentor에 없는 단계. **먼저 듣는다.**
 ```
 python scripts/research_fanout.py "<본문/주제>" \
   --keywords-file output/<run>/meditation_seed.json \
-  --engines kci-api-searcher,nlk-biblio-searcher,semantic-scholar,crossref-journal-searcher \
-  --parallel --out output/<run>/EvidencePack.json
+  --engines kci-api-searcher,nlk-ejournal-searcher,semantic-scholar,crossref-journal-searcher \
+  --per-keyword-limit 3 --out output/<run>/EvidencePack.json
 ```
-- 4엔진(KCI·NLK·Semantic Scholar·Crossref)은 모두 API 방식이라 속도 부담이 적다. 주석·교부·신학논문 근거를 모은다.
+- 4엔진(KCI·NLK전자저널·Semantic Scholar·Crossref)은 모두 API 방식이다. 한국어 키워드는 KCI·NLK전자저널로, 영어 키워드는 Semantic Scholar·Crossref로 라우팅한다.
 - 산출 `EvidencePack.json`은 설교에 *인용*되진 않으나 *설교자가 보는* 자료다(헌법: 출처 신중성).
 - **순서가 결정적**: fan-out은 반드시 Phase 1(경청) *이후*에. 자료를 먼저 끌어오면 사용자의 처음 생각이 자료에 납치된다.
 
@@ -91,9 +91,9 @@ fan-out 자료가 묵상의 어느 대목을 **지지(supports)/도전(challenge
 - `meditation_seed.md` / `.json` — 발전된 묵상(origin_memo 불가침 + developed + 긴장 disposition) + `evidence`(EvidencePack 참조·근거) + 선택된 메시지 후보 + `handoff.terms`(본문별 용어 초안)
 - 스키마: [`../templates/meditation_seed.example.json`](../templates/meditation_seed.example.json)
 
-> **보이스(L2)는 이 단계에서 잡지 않는다.** 설교자 보이스 세팅은 **설교 개요 진입 직전**에 본문장르×청중×절기×tier로 확정한다(CONCEPT §5 "보이스 고정 시점"). 묵상 단계에서 톤을 미리 못 박으면 묵상이 톤에 끌려간다.
+> **보이스(L2)는 이 단계에서 잡지 않는다.** 설교자 보이스 세팅은 **설교 개요 진입 직전**에 본문장르×청중×절기×tier로 확정한다(보이스 고정 원칙 "보이스 고정 시점"). 묵상 단계에서 톤을 미리 못 박으면 묵상이 톤에 끌려간다.
 
-> **단독성**: TSPP는 공개 단독 레포다. fan-out 엔진은 TAWP에서 **vendored**(`scripts/` + `skills/{kci-api-searcher,nlk-biblio-searcher,semantic-scholar,crossref-journal-searcher}`)되어 TSPP 안에 자체 보유한다 — 외부 상류에 런타임 의존하지 않는다(출처·동기화는 [`VENDOR.md`](../../../VENDOR.md)).
+> **단독성**: TSPP는 공개 단독 레포다. fan-out 엔진은 TAWP에서 **vendored**(`scripts/` + `skills/{kci-api-searcher,nlk-ejournal-searcher,semantic-scholar,crossref-journal-searcher}`)되어 TSPP 안에 자체 보유한다 — 외부 상류에 런타임 의존하지 않는다(출처·동기화는 [`VENDOR.md`](../../../VENDOR.md)).
 
 ---
 

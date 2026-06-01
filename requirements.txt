@@ -13,7 +13,9 @@
 requests>=2.31
 
 # --- PDF 본문 추출(3단계 분석): 페이지 번호 보존 = 정확한 인용 ---
-# 기본 백엔드. 순수 파이썬·BSD·시스템 의존 0 → 불특정 다수 설치에 가장 무난.
+# MS_Dev 워크스페이스 안에서는 resource_ingest.py가 .skills/pdf-extractor의
+# opendataloader Core 엔진을 우선 사용한다. 아래 pypdf는 범용 배포/외부 환경의
+# 기본 폴백이다. 순수 파이썬·BSD·시스템 의존 0 → 불특정 다수 설치에 가장 무난.
 # OCR된 PDF(텍스트 레이어 보유)면 그대로 추출된다.
 pypdf>=4.0
 

@@ -1,7 +1,7 @@
 # 설교 개요 작성 방법론 (Outline Method)
 
 > `sermon-outline` 스킬의 방법론 본체. SKILL.md는 흐름을, 이 문서는 *어떻게·왜*를 담는다.
-> 설계: CONCEPT §5(8-Phase)·§6(산출물). 상류: sermon-mentor(씨앗)·voice(3층)·TAWP fan-out(근거).
+> 설계: 보이스 고정 원칙(8-Phase)·§6(산출물). 상류: sermon-mentor(씨앗)·voice(3층)·TAWP fan-out(근거).
 
 ---
 
@@ -9,7 +9,7 @@
 
 `meditation_seed`(묵상 씨앗) + `resolved_voice`(고정 보이스) + (선택)`EvidencePack`(근거)를 받아 **본문에 충실한 설교 개요**(`sermon_outline.md`, 1~3쪽)를 빚는다. 이것은 설교 *준비*의 결정체이지 *대체*가 아니다 — 설교자의 묵상과 목소리를 본문 충실한 개요로 증폭하는 조력이다.
 
-**왜 개요가 ★ 기본 산출인가**(CONCEPT §6): 전체 원고를 AI가 쓰면 대필 위험이 크다. 개요는 설교자가 *자기 입으로* 살을 붙일 뼈대다 — 준비를 돕되 강단의 말은 설교자의 것으로 남긴다. 전체 원고 확장은 *선택*이며 분리한다.
+**왜 개요가 ★ 기본 산출인가**(개요 기본 산출 원칙): 전체 원고를 AI가 쓰면 대필 위험이 크다. 개요는 설교자가 *자기 입으로* 살을 붙일 뼈대다 — 준비를 돕되 강단의 말은 설교자의 것으로 남긴다. 전체 원고 확장은 *선택*이며 분리한다.
 
 ---
 
@@ -81,7 +81,7 @@
 ## 6. 게이트 (Phase 0·3·5)
 
 - **Phase 0 진입 게이트**: `gates.ready`(씨앗·보이스 둘 다 HITL 승인). false면 작성 안 함.
-- **Phase 3 Foundation Gate**: 본문 정합(binding) — 적용이 본문 왜곡 시 hard stop(CONCEPT §4-1). TAWP `binding_verifier` 정신.
+- **Phase 3 Foundation Gate**: 본문 정합(binding) — 적용이 본문 왜곡 시 hard stop(본문 정합 hard gate). TAWP `binding_verifier` 정신.
 - **Phase 5 sign-off**: 설교자 최종 승인. AI sign-off 절대 금지.
 
 모든 Phase 사이 HITL 결정 카드(✅승인 / ↻돌아가기 / ✏️수정 / ⏸보류) — TAWP·sermon-mentor와 동일.

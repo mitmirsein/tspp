@@ -52,7 +52,7 @@
       "ko": ["팔복", "심령이 가난한 자", "하나님 나라", "복의 역설"],
       "en": ["Beatitudes", "poor in spirit", "kingdom of heaven", "Sermon on the Mount"]
     },
-    "engines": ["kci-api-searcher", "nlk-biblio-searcher", "semantic-scholar", "crossref-journal-searcher"],
+    "engines": ["kci-api-searcher", "nlk-ejournal-searcher", "semantic-scholar", "crossref-journal-searcher"],
     "evidence_pack_ref": "output/EvidencePack.json",
     "integration_note": "fan-out 자료가 묵상의 어느 대목을 지지/도전/확장했는지 요지(상세는 supporting_refs)."
   },
@@ -80,7 +80,7 @@
   ],
 
   "handoff": {
-    "_comment": "다음 단계(후속 주해 / TOS 작성)로 넘길 것. 보이스(L2)는 여기 없다 — 설교 개요(Phase 5 of CONCEPT 8-Phase) 진입 직전에 본문장르×청중×절기×tier로 확정(CONCEPT §5). keywords는 evidence.keywords_used 에 이미 기록됨.",
+    "_comment": "다음 단계(후속 주해 / TOS 작성)로 넘길 것. 보이스(L2)는 여기 없다 — 설교 개요(Phase 5 of TSPP 단계) 진입 직전에 본문장르×청중×절기×tier로 확정(보이스 고정 원칙). keywords는 evidence.keywords_used 에 이미 기록됨.",
     "terms": [
       {
         "concept": "poor in spirit",

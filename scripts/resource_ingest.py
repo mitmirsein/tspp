@@ -17,10 +17,11 @@
 에이전트는 이 마커로 `(저자 연도, p.3)` 형태의 정확한 페이지 인용을 만들 수 있다.
 
 백엔드(있는 것 자동 선택, 품질 우선순위):
-    1. pymupdf (fitz)   — 선택 설치(고품질). AGPL.
-    2. pdfplumber       — 선택 설치.
-    3. pypdf            — requirements.txt 기본(순수 파이썬·BSD, 시스템 의존 0).
-    4. pdftotext        — poppler 설치 시 subprocess(\\f=페이지 구분).
+    1. opendataloader   — MS_Dev .skills/pdf-extractor Core 엔진(구조 JSON/Markdown).
+    2. pymupdf (fitz)   — 선택 설치(고품질). AGPL.
+    3. pdfplumber       — 선택 설치.
+    4. pypdf            — requirements.txt 기본(순수 파이썬·BSD, 시스템 의존 0).
+    5. pdftotext        — poppler 설치 시 subprocess(\\f=페이지 구분).
     (텍스트 레이어가 없는 스캔본은 tesseract가 있으면 best-effort OCR 폴백.)
 
 사용법:
@@ -38,6 +39,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 PAGE_MARKER = "===== p.{n} ====="
@@ -68,6 +70,14 @@ def record_id(rec: dict) -> str:
         return slugify_doi(doi)
     ck = (rec.get("citekey") or "").strip()
     return ck or slug_title(rec.get("title") or "")
+
+
+def display_path(path: Path, root: Path) -> str:
+    """프로젝트 내부면 상대경로, 외부 커스텀 경로면 절대경로로 안전하게 표시."""
+    try:
+        return str(path.relative_to(root))
+    except ValueError:
+        return str(path)
 
 
 _NORM_RE = re.compile(r"[^0-9a-z가-힣]+")
@@ -117,6 +127,8 @@ def match_record(stem: str, head_text: str, records: list[dict]) -> tuple[dict |
 # ---------------------------------------------------------------- 백엔드
 
 def _backend_available() -> str:
+    if _opendataloader_available():
+        return "opendataloader"
     for mod, name in (("fitz", "pymupdf"), ("pdfplumber", "pdfplumber"), ("pypdf", "pypdf")):
         try:
             __import__(mod)
@@ -126,6 +138,65 @@ def _backend_available() -> str:
     if shutil.which("pdftotext"):
         return "pdftotext"
     return ""
+
+
+def _pdf_extractor_script() -> Path:
+    dev_root = Path(__file__).resolve().parents[3]
+    return dev_root / ".skills" / "pdf-extractor" / "scripts" / "extract_pdf.py"
+
+
+def _opendataloader_available() -> bool:
+    return bool(shutil.which("uv") and _pdf_extractor_script().is_file())
+
+
+def _pages_opendataloader(path: Path) -> list[str]:
+    """MS_Dev .skills/pdf-extractor의 opendataloader Core 엔진을 페이지별 텍스트로 변환."""
+    script = _pdf_extractor_script()
+    if not script.is_file():
+        raise RuntimeError(f"pdf-extractor 스크립트 없음: {script}")
+    dev_root = script.parents[3]
+    with tempfile.TemporaryDirectory(prefix="tspp-opendataloader-") as td:
+        out_dir = Path(td)
+        cmd = ["uv", "run", "python", str(script), "--input", str(path), "--output", str(out_dir)]
+        proc = subprocess.run(
+            cmd,
+            cwd=str(dev_root),
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=240,
+        )
+        if proc.returncode != 0:
+            detail = (proc.stderr or proc.stdout or "").strip().splitlines()
+            raise RuntimeError(detail[-1] if detail else "opendataloader 추출 실패")
+
+        json_files = sorted(out_dir.glob("*.json"))
+        if json_files:
+            data = json.loads(json_files[0].read_text(encoding="utf-8", errors="replace"))
+            page_count = int(data.get("number of pages") or 0) if isinstance(data, dict) else 0
+            pages: list[list[str]] = [[] for _ in range(max(1, page_count))]
+            for kid in data.get("kids", []) if isinstance(data, dict) else []:
+                if not isinstance(kid, dict):
+                    continue
+                content = str(kid.get("content") or "").strip()
+                if not content:
+                    continue
+                page_no = kid.get("page number") or 1
+                try:
+                    idx = max(0, int(page_no) - 1)
+                except (TypeError, ValueError):
+                    idx = 0
+                while idx >= len(pages):
+                    pages.append([])
+                pages[idx].append(content)
+            if any(pages):
+                return ["\n\n".join(parts).strip() for parts in pages]
+
+        md_files = sorted(out_dir.glob("*.md"))
+        if md_files:
+            return [md_files[0].read_text(encoding="utf-8", errors="replace")]
+    raise RuntimeError("opendataloader 출력 JSON/Markdown 없음")
 
 
 def _pages_pymupdf(path: Path) -> list[str]:
@@ -159,10 +230,14 @@ def _pages_pdftotext(path: Path) -> list[str]:
     )
     if out.returncode != 0:
         raise RuntimeError(out.stderr.strip() or "pdftotext 실패")
-    return out.stdout.split("\f")
+    pages = out.stdout.split("\f")
+    while pages and not pages[-1].strip():
+        pages.pop()
+    return pages or [out.stdout]
 
 
 _EXTRACTORS = {
+    "opendataloader": _pages_opendataloader,
     "pymupdf": _pages_pymupdf,
     "pdfplumber": _pages_pdfplumber,
     "pypdf": _pages_pypdf,
@@ -239,6 +314,74 @@ def render_text(rec: dict | None, src: Path, backend: str, pages: list[str]) -> 
     return "\n".join(head) + "\n" + "\n".join(body) + "\n"
 
 
+def render_analysis_packet(run: str | None, manifest: list[dict], root: Path) -> str:
+    """에이전트가 3단계 원문 분석에 바로 진입하도록 구조화한 작업 패킷."""
+    extracted = [m for m in manifest if str(m.get("status", "")).startswith("extracted")]
+    abstract_only = [m for m in manifest if m.get("status") == "abstract_only"]
+    errors = [m for m in manifest if m.get("status") == "extract_error"]
+    lines = [
+        "# TSPP Resource Analysis Packet",
+        "",
+        f"- Run: `{run or '(custom)'}`",
+        f"- Extracted full texts: {len(extracted)}",
+        f"- Abstract-only fallbacks: {len(abstract_only)}",
+        f"- Extraction errors: {len(errors)}",
+        "",
+        "## LLM Analysis Protocol",
+        "",
+        "1. Read the extracted text files listed below before making claims from a source.",
+        "2. Cite full-text claims with the preserved `===== p.N =====` page marker, e.g. `(Author Year, p.N)`.",
+        "3. Do not quote or cite abstract-only records as if full text was read.",
+        "4. Separate what supports, challenges, or extends the sermon meditation.",
+        "5. Keep academic insight subordinate to the biblical text and the preacher's original meditation.",
+        "",
+        "## Extracted Full Texts",
+        "",
+    ]
+    if extracted:
+        for i, m in enumerate(extracted, 1):
+            title = m.get("matched_title") or m.get("source_file") or "(unmatched source)"
+            path = m.get("out_text") or ""
+            lines.extend([
+                f"### {i}. {title}",
+                f"- Text path: `{path}`",
+                f"- Source file: `{m.get('source_file')}`",
+                f"- DOI: `{m.get('matched_doi') or ''}`",
+                f"- Pages: {m.get('pages')} · chars: {m.get('chars')} · backend: `{m.get('backend')}`",
+                f"- Match: `{m.get('match_method')}` · status: `{m.get('status')}`",
+                "",
+            ])
+    else:
+        lines.append("_No full-text resources extracted yet._\n")
+
+    lines.extend(["## Abstract-Only Fallbacks", ""])
+    if abstract_only:
+        for i, m in enumerate(abstract_only, 1):
+            lines.append(f"{i}. {m.get('matched_title') or '(제목 없음)'} — DOI `{m.get('matched_doi') or ''}`")
+    else:
+        lines.append("_None._")
+    lines.append("")
+
+    if errors:
+        lines.extend(["## Extraction Errors", ""])
+        for i, m in enumerate(errors, 1):
+            lines.append(f"{i}. `{m.get('source_file')}` — {m.get('error')}")
+        lines.append("")
+
+    lines.extend([
+        "## Suggested Next Prompt",
+        "",
+        "Read this packet and the extracted full-text files, then produce a source-grounded analysis:",
+        "",
+        "- Key thesis and argument structure of each selected source",
+        "- Page-grounded insights relevant to the sermon text",
+        "- Where the source supports/challenges/extends the original meditation",
+        "- Usable but non-showy homiletical implications",
+        "- Citation-safe notes with page markers",
+    ])
+    return "\n".join(lines) + "\n"
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("run", nargs="?", help="실행 이름(output/<run>/ 규약). 미지정 시 --pack 필수")
@@ -255,6 +398,7 @@ def main() -> int:
         res_dir = Path(args.resources) if args.resources else root / "input" / "resources" / args.run
         out_dir = Path(args.out) if args.out else root / "output" / args.run / "resources"
         man_path = Path(args.manifest) if args.manifest else root / "output" / args.run / "resource_manifest.json"
+        packet_path = man_path.parent / "resource_analysis_packet.md"
     else:
         if not args.pack:
             ap.error("run 또는 --pack 중 하나는 필요합니다")
@@ -262,6 +406,7 @@ def main() -> int:
         res_dir = Path(args.resources) if args.resources else pack.parent.parent.parent / "input" / "resources" / pack.parent.name
         out_dir = Path(args.out) if args.out else pack.parent / "resources"
         man_path = Path(args.manifest) if args.manifest else pack.parent / "resource_manifest.json"
+        packet_path = man_path.parent / "resource_analysis_packet.md"
 
     if not pack.exists():
         print(f"[resource_ingest] EvidencePack 없음: {pack}", file=sys.stderr)
@@ -304,7 +449,7 @@ def main() -> int:
             matched_ids.add(record_id(rec))
         manifest.append({
             "source_file": src.name,
-            "out_text": str(out_file.relative_to(root)),
+            "out_text": display_path(out_file, root),
             "backend": used,
             "pages": len(pages),
             "chars": sum(len(p) for p in pages),
@@ -327,16 +472,18 @@ def main() -> int:
         })
 
     man_path.parent.mkdir(parents=True, exist_ok=True)
+    packet_path.write_text(render_analysis_packet(args.run, manifest, root), encoding="utf-8")
     man_path.write_text(json.dumps(
-        {"schema_version": 1, "backend_default": backend, "resources_dir": str(res_dir.relative_to(root)),
-         "out_dir": str(out_dir.relative_to(root)), "total_records": len(records),
-         "ingested": len(src_files), "records": manifest},
+        {"schema_version": 1, "backend_default": backend, "resources_dir": display_path(res_dir, root),
+         "out_dir": display_path(out_dir, root), "total_records": len(records),
+         "ingested": len(src_files), "analysis_packet": display_path(packet_path, root), "records": manifest},
         ensure_ascii=False, indent=2), encoding="utf-8")
 
     ext = sum(1 for m in manifest if m["status"].startswith("extracted"))
     ab = sum(1 for m in manifest if m["status"] == "abstract_only")
     print(f"[resource_ingest] 백엔드={backend or '없음'} · 입수추출 {ext}건 · 미입수(초록폴백) {ab}건")
-    print(f"  텍스트 → {out_dir.relative_to(root)}/  ·  매니페스트 → {man_path.relative_to(root)}")
+    print(f"  텍스트 → {display_path(out_dir, root)}/  ·  매니페스트 → {display_path(man_path, root)}")
+    print(f"  LLM 분석 패킷 → {display_path(packet_path, root)}")
     return 0
 
 
