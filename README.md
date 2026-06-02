@@ -35,6 +35,12 @@ python3 scripts/tspp.py search my-run --query "마태복음 5장 팔복"
 python3 scripts/tspp.py list my-run
 ```
 
+OA PDF가 있는 영어 자료는 자동으로 일부 받을 수 있습니다.
+
+```bash
+python3 scripts/tspp.py fetch my-run
+```
+
 사용자가 선택한 PDF 또는 텍스트 원문을 아래 폴더에 넣습니다.
 
 ```text
@@ -51,6 +57,14 @@ LLM 분석은 아래 파일에서 시작합니다.
 
 ```text
 output/my-run/resource_analysis_packet.md
+```
+
+보이스를 고르고 개요 작성 브리프와 사람이 채울 초안 골격을 만듭니다.
+
+```bash
+python3 scripts/tspp.py voice my-run --genre gospel_parable --tier pastoral --season ordinary
+python3 scripts/tspp.py preflight my-run
+python3 scripts/tspp.py outline-draft my-run
 ```
 
 ## 환경변수
@@ -83,7 +97,7 @@ fan-out 검색은 네 개의 API 엔진을 사용합니다.
 | Semantic Scholar | 영어 | Graph API `/paper/search` | `SEMANTIC_SCHOLAR_API_KEY` 선택 |
 | Crossref | 영어 | REST API `/works` | `CROSSREF_MAILTO` 선택 |
 
-`output/<run>/meditation_seed.json`이 있으면 검색 명령은 아래 키워드 필드를 우선 사용합니다.
+`input/<run>/meditation_seed.json`이 있으면 검색과 리스트 명령은 아래 키워드 필드를 우선 사용합니다.
 
 ```text
 evidence.keywords_used.ko
@@ -97,10 +111,11 @@ python3 scripts/tspp.py init <run>
 python3 scripts/tspp.py status <run>
 python3 scripts/tspp.py search <run> --query "<본문 또는 주제>"
 python3 scripts/tspp.py list <run>
+python3 scripts/tspp.py fetch <run>
 python3 scripts/tspp.py ingest <run>
-python3 scripts/tspp.py preflight <run> \
-  --meditation-seed output/<run>/meditation_seed.json \
-  --resolved-voice output/<run>/resolved_voice.json
+python3 scripts/tspp.py voice <run> --genre gospel_parable --tier pastoral --season ordinary
+python3 scripts/tspp.py preflight <run>
+python3 scripts/tspp.py outline-draft <run>
 ```
 
 ## 원문 처리

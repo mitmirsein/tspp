@@ -34,6 +34,35 @@ def load_records(path: Path) -> list[dict]:
     return data.get("records") or data.get("evidence") or []
 
 
+def load_keywords(path: Path | None) -> list[str]:
+    if not path or not path.exists():
+        return []
+    data = json.loads(path.read_text(encoding="utf-8"))
+    root = data.get("keywords") if isinstance(data.get("keywords"), dict) else (data.get("evidence") or {}).get("keywords_used", {})
+    out: list[str] = []
+    if isinstance(root, dict):
+        for lang in ("ko", "en"):
+            vals = root.get(lang) or []
+            if isinstance(vals, list):
+                out.extend(str(v).strip() for v in vals if str(v).strip())
+    return out
+
+
+def relevance_score(r: dict, keywords: list[str]) -> int:
+    title = str(r.get("title") or "").lower()
+    abstract = str(r.get("abstract") or "").lower()
+    score = 0
+    for kw in keywords:
+        k = kw.strip().lower()
+        if not k:
+            continue
+        if k in title:
+            score += 2
+        elif k in abstract:
+            score += 1
+    return score
+
+
 def dl_name(r: dict) -> str:
     """권장 다운로드 파일명 — resource_ingest의 DOI 슬러그 규칙과 일치(자동 매핑)."""
     import re
@@ -48,7 +77,7 @@ def dl_name(r: dict) -> str:
     return (t[:48] or "untitled") + ".pdf"
 
 
-def fmt_record(i: int, r: dict, abstract_chars: int) -> str:
+def fmt_record(i: int, r: dict, abstract_chars: int, score: int | None = None) -> str:
     eng = ENGINE_LABEL.get(r.get("engine", ""), r.get("engine", "?"))
     title = str(r.get("title") or "(제목 없음)").strip()
     # authors는 정규화 단계에서 리스트(evidence_collect._authors) — 문자열도 허용.
@@ -65,6 +94,8 @@ def fmt_record(i: int, r: dict, abstract_chars: int) -> str:
     head = f"### {i}. {title}"
     meta = " · ".join(x for x in [authors, year, venue, f"[{eng}]"] if x)
     lines = [head, f"- {meta}"]
+    if score is not None:
+        lines.append(f"- 관련성: {score}")
     # 원문 입수 경로(2단계용)
     link = ""
     if pdf_url:
@@ -92,6 +123,7 @@ def main() -> None:
     ap = argparse.ArgumentParser(description="EvidencePack → 선별 리스트(markdown)")
     ap.add_argument("--evidence", required=True, help="EvidencePack.json 경로")
     ap.add_argument("--out", required=True, help="산출 evidence_list.md 경로")
+    ap.add_argument("--keywords-file", help="관련성 정렬에 사용할 meditation_seed.json 또는 keywords JSON")
     ap.add_argument("--abstract-chars", type=int, default=280, help="초록 표시 길이")
     args = ap.parse_args()
 
@@ -104,17 +136,22 @@ def main() -> None:
         print("[evidence_list] 레코드 0건", file=sys.stderr)
         sys.exit(1)
 
-    # 초록 보유분 우선, 그다음 연도 내림차순(선별 편의)
-    def _key(r: dict):
+    keywords = load_keywords(Path(args.keywords_file)) if args.keywords_file else []
+    scored = [(r, relevance_score(r, keywords) if keywords else None) for r in records]
+
+    # 관련성 우선(씨앗 키워드가 있을 때), 초록 보유분, 연도 내림차순(선별 편의)
+    def _key(item: tuple[dict, int | None]):
+        r, score = item
         has_ab = 1 if (r.get("abstract") or "").strip() else 0
         try:
             yr = int(str(r.get("year") or 0)[:4])
         except ValueError:
             yr = 0
-        return (-has_ab, -yr)
+        return (-(score or 0), -has_ab, -yr)
 
-    records_sorted = sorted(records, key=_key)
+    records_sorted = sorted(scored, key=_key)
     n_ab = sum(1 for r in records if (r.get("abstract") or "").strip())
+    n_zero = sum(1 for _, s in scored if s == 0) if keywords else 0
 
     # 엔진별 집계
     from collections import Counter
@@ -126,6 +163,8 @@ def main() -> None:
         "# 학술 자료 정찰 리스트 (1차 — HITL 선별용)",
         "",
         f"> 총 {len(records)}건 · 초록 보유 {n_ab}건 · 엔진별: {eng_line}",
+        f"> 관련성 정렬: {'사용' if keywords else '미사용'}"
+        + (f" · 관련성0 {n_zero}건" if keywords else ""),
         "> 초록은 *선별 재료*일 뿐, 없는 자료도 버리지 않았다(유령인용 차단은 원문 입수로).",
         "",
         "## 원문 입수 → 본문 추출 (2~3단계 · HITL)",
@@ -135,7 +174,7 @@ def main() -> None:
         "— 파일명은 **권장 파일명** 그대로(자동 매핑됨):",
         f"   - `input/resources/{run}/`  *(목회자 자산 — gitignore·로컬 처리)*",
         "3. 본문 추출(페이지 번호 보존 = 정확한 인용):",
-        f"   - `python3 scripts/resource_ingest.py {run}`",
+        f"   - `python3 scripts/tspp.py ingest {run}`",
         "   - 최초 1회 환경: `pip install -r requirements.txt` (또는 시스템 `poppler`).",
         "4. 에이전트가 추출 텍스트의 `===== p.N =====` 마커로 `(저자 연도, p.N)` 인용을 "
         "만든다. 원문 미입수분은 초록 기반 소프트 폴백(밀도 낮음 경고).",
@@ -143,7 +182,7 @@ def main() -> None:
         "---",
         "",
     ]
-    body = [fmt_record(i, r, args.abstract_chars) for i, r in enumerate(records_sorted, 1)]
+    body = [fmt_record(i, r, args.abstract_chars, score) for i, (r, score) in enumerate(records_sorted, 1)]
     Path(args.out).write_text("\n".join(head) + "\n\n".join(body) + "\n", encoding="utf-8")
     print(f"📄 선별 리스트 생성: {args.out} | {len(records)}건(초록 {n_ab}) · {eng_line}")
 
