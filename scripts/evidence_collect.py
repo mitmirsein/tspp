@@ -2,11 +2,11 @@
 # -*- coding: utf-8 -*-
 """evidence_collect.py — 검색기 출력 정규화 + EvidencePack.json 생성기 (TAWP Phase 2)
 
-TAWP의 각 검색 스킬(kci-api-searcher, nlk-*, semantic-scholar, crossref-journal-searcher,
-google-scholar-* 등)은 서로 다른 JSON 형태(results / data / items / 단순 list / error)와
+TSPP의 검색 스킬(kci-api-searcher, nlk-ejournal-searcher, semantic-scholar,
+crossref-journal-searcher)은 서로 다른 JSON 형태(results / data / items / 단순 list / error)와
 필드명(title / title_eng / title_kor, authors / author, doi / DOI, year / pub_year ...)을
 반환한다. 본 도구는 이질적 출력을 단일 EvidencePack 레코드 스키마로 정규화하여 합치고,
-claim-ledger·forensic_gate가 소비하는 표준 EvidencePack.json을 생성한다.
+TSPP가 소비하는 표준 EvidencePack.json을 생성한다.
 
 사용법:
     python scripts/evidence_collect.py merge \
@@ -138,16 +138,10 @@ def _dedup_key(rec: dict) -> str:
 
 
 ENGINE_PRIORITY = {
-    "zotero-local": 0,
     "crossref-journal-searcher": 10,
     "kci-api-searcher": 11,
     "nlk-ejournal-searcher": 11,
-    "nlk-biblio-searcher": 11,
-    "nlk-subject-searcher": 12,
-    "ixtheo-searcher": 12,
     "semantic-scholar": 13,
-    "google-scholar-quick": 20,
-    "google-scholar-semantic": 20,
 }
 
 
@@ -171,8 +165,7 @@ def _merge_supplemental(into: dict, extra: dict) -> None:
 
 
 def merge(inputs: list, out_path: str) -> dict:
-    """엔진 우선순위 dedup. zotero-local 등 권위 소스가 winner를 유지하며,
-    외부 엔진은 winner가 비워 둔 필드만 보강한다."""
+    """엔진 우선순위 dedup. winner의 빈 필드만 후속 레코드로 보강한다."""
     seen: dict[str, dict] = {}
     records: list[dict] = []
     for engine, payload in inputs:

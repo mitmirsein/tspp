@@ -84,7 +84,6 @@ cp .env.example .env
 
 - `SEMANTIC_SCHOLAR_API_KEY`: Semantic Scholar 호출 한도 안정화
 - `CROSSREF_MAILTO`: Crossref polite pool용 연락 이메일
-- `ZOTERO_AUTO_PUSH`: Zotero 자동 푸시 사용 여부
 
 ## 검색 엔진
 

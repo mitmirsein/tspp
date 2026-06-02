@@ -327,12 +327,6 @@ def main():
                          "키 미설정 스킵·0건은 게이트 통과(정당한 degraded·검색 수행됨).")
     ap.add_argument("--max-workers", type=int, default=6)
     ap.add_argument("--report", help="fan-out 로그 마크다운 경로")
-    ap.add_argument("--push-zotero", action="store_true",
-                    help="병합 완료 후 EvidencePack을 Zotero 라이브러리에 자동 push "
-                         "(env ZOTERO_AUTO_PUSH=true와 동일). Zotero 앱 가동 + 식별자 필터 "
-                         "+ 라이브러리 중복 차단.")
-    ap.add_argument("--no-push-zotero", action="store_true",
-                    help="env ZOTERO_AUTO_PUSH=true가 설정되어 있어도 push 비활성.")
     args = ap.parse_args()
 
     reg = load_registry()
@@ -434,20 +428,6 @@ def main():
         print(f"   ⛔ require-engines 미충족(키 외 사유 누락): {missing_required} "
               f"— 커버리지 하드 게이트 실패(exit 2). --retries 상향·개별 엔진 점검 후 재실행.", file=sys.stderr)
         sys.exit(2)
-
-    # Zotero 자동 push (opt-in)
-    env_push = (os.getenv("ZOTERO_AUTO_PUSH", "").strip().lower() in ("1", "true", "yes", "on"))
-    do_push = (args.push_zotero or env_push) and not args.no_push_zotero
-    if do_push and os.path.exists(os.path.join(_ROOT, args.out)):
-        push_cmd = [sys.executable, os.path.join(_HERE, "zotero_push.py"),
-                    os.path.join(_ROOT, args.out)]
-        pc = subprocess.run(push_cmd, cwd=_ROOT, capture_output=True, text=True)
-        out = (pc.stdout or "").strip()
-        err = (pc.stderr or "").strip()
-        if out:
-            print(out)
-        if err:
-            print(err, file=sys.stderr)
 
 
 if __name__ == "__main__":

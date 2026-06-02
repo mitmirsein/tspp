@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """nlk-ejournal-searcher — 국립중앙도서관 data.go.kr 전자저널 검색 (BookInformationService_v2).
 
-기존 nlk-biblio-searcher(nl.go.kr 서지, 초록 없음)를 대체. data.go.kr 국가서지 LOD의
-전자저널(학술논문) 서비스는 **초록·목차·ISSN·DBpia 원문링크**를 제공해 TSPP 1차 정찰의
+data.go.kr 국가서지 LOD의 전자저널(학술논문) 서비스는
+**초록·목차·ISSN·DBpia 원문링크**를 제공해 TSPP 1차 정찰의
 한국어 학술 자료 공급원이 된다(references/research-workflow.md 1단계).
 
 - 순수 stdlib (외부 패키지 0). XML 응답을 ElementTree로 파싱.
