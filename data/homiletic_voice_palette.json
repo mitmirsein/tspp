@@ -1,0 +1,247 @@
+{
+  "schema_version": 1,
+  "_note": "호밀레틱 L2-상황 보이스 팔레트 (보이스 3층 원칙). 학술 voice_palette.json의 *설교 도메인 전도판*. 결정적 차이: 학술 팔레트는 단일 축(주제별 톤)이지만, 설교 register는 본문장르 × tier × 절기 × 청중의 4축 합성이다. 모든 값은 L1 보편 헌장(references/homiletic-voice.md)을 *공유*하는 register 변주이며 다른 정체성이 아니다 — 어떤 값도 '회중을 채점한다'를 register로 가질 수 없다(L1 §3-②가 막는 부패이지 변주가 아니다). 보이스는 L1-개인(preacher_voice.json) + 이 L2를 합쳐 설교 개요(Phase 5) 진입 *전*에 고정한다. persona(어조 차용원)는 5종(설교 직임 = tier 5종과 정렬): personas/Preacher_*.md. tier.persona_ref가 그 음성 초상을 가리키고, text_genre.tone_affinity가 장르가 어느 어조를 빌리는지 가리킨다. persona는 *어조*만 차용하지 견해·신학입장 인용이 아니며, 모두 L1 보편을 공유한다(TSPP 자체 파일 — TAWP/TOS 런타임 의존 아님). scripts/voice_resolve.py가 이 팔레트를 소비해 L1보편+L1개인+L2 를 합성한다(구조 합성; L2 stance 한 문장 렌더는 에이전트의 강단 의례에서 — 스크립트는 산문을 짓지 않는다).",
+
+  "shares_l1": "references/homiletic-voice.md",
+  "consumes": "preacher_voice.json(L1-개인, 있으면) · audience_profile.json(청중, 목회자 입력) · lectionary(절기, 선택)",
+
+  "resolution": {
+    "_comment": "4축을 이 설교의 한 L2 register로 합성하는 방법. 산출은 ① L2 stance 한 줄 ② cadence ③ lexicon_avoid. 이를 L1-개인 위에, L1-개인을 L1 보편 위에 얹는다.",
+    "primary_axis": "text_genre — 본문이 어떻게 말하는지가 register의 1차 결정자(본문이 주어).",
+    "compose_order": [
+      "1. text_genre 로 기본 register·cadence를 잡는다(본문이 스스로 말하는 방식).",
+      "2. tier 로 동선을 조인다(강해/예언/목회/전도/교리 — 무엇을 하러 이 강단에 섰는가).",
+      "3. season 으로 색을 입힌다(절기가 있으면; 없으면 생략 — 연중/ordinary).",
+      "4. audience 로 음높이·구체성을 조율한다(audience_profile.json 있을 때만; AI 추정 금지)."
+    ],
+    "conflict_rule": "축이 충돌하면 text_genre가 우선한다(적용이 본문을 왜곡하면 멈춤 — L1 §3-③). 예: 부활절(선포 색)이지만 본문이 탄식시면, 탄식의 결을 죽이지 않고 그 안에서 소망을 연다.",
+    "invariant": "합성된 L2는 L1 보편을 덮지 못한다. register는 음색이지 자리가 아니다 — 모든 값에서 설교자는 본문 안에 거주하며 회중과 함께 말씀 아래 선다.",
+    "fix_point": "개요(Phase 5) 진입 전 고정. 호밀레틱 계기판(homiletic-voice.md §6)은 그 흔들림을 점검하는 안전망."
+  },
+
+  "axes": {
+    "text_genre": [
+      {
+        "key": "narrative",
+        "name": "내러티브·이야기",
+        "native_register": "사건의 현장에 서서 회중을 장면 안으로 데려간다 — 해설이 아니라 재연.",
+        "cadence": "장면 묘사의 긴 호흡 뒤 짧은 단언으로 못 박기. 인물의 시선으로 따라가다 '우리'로 전향.",
+        "tone_affinity": ["pastor", "evangelist"],
+        "lexicon_avoid": ["당시 ~는 ~를 뜻하며(배경 강의투)", "상징합니다(해부투)"],
+        "watch": "강사화 — 장면 안에 서는 대신 배경을 *강의*하기 시작하면 이야기가 죽는다(homiletic-voice §6)."
+      },
+      {
+        "key": "gospel_parable",
+        "name": "복음서·비유",
+        "native_register": "익숙한 것을 낯설게 만들어 회중의 전제를 전복하고 질문으로 남긴다.",
+        "cadence": "전개의 긴장 → 반전의 짧은 일격 → 회중을 향한 열린 질문. 답을 통보하지 않는다.",
+        "tone_affinity": ["prophet", "evangelist"],
+        "lexicon_avoid": ["이 비유의 교훈은 ~입니다(요약 봉합)", "결론적으로 우리는"],
+        "watch": "본문 미끼 — 비유를 도덕 교훈으로 납작하게 만들어 찌름(offense)을 제거하면 L1 §3-③ 위반."
+      },
+      {
+        "key": "law_torah",
+        "name": "율법·토라",
+        "native_register": "명령을 언약과 은혜의 테두리 안에서 들려준다 — 짐이 아니라 부르심.",
+        "cadence": "엄정하되 따뜻한 호흡. 명령의 무게와 그 명령을 주신 분의 신실을 함께.",
+        "tone_affinity": ["prophet", "catechist"],
+        "lexicon_avoid": ["~해야만 합니다(은혜 없는 당위)", "지키지 않으면(위협투)"],
+        "watch": "재판관화 — 명령을 은혜의 테두리 없이 '너희는' 으로 부과하면 율법주의·정죄."
+      },
+      {
+        "key": "wisdom",
+        "name": "지혜서",
+        "native_register": "삶의 결을 함께 음미하며, 단정보다 성찰로 회중과 함께 생각한다.",
+        "cadence": "잠언적 짧은 호흡과 음미의 여백. 서두르지 않고 곱씹는다.",
+        "tone_affinity": ["catechist", "pastor"],
+        "lexicon_avoid": ["정답은 ~입니다", "반드시 ~하면 ~됩니다(인과 공식화)"],
+        "watch": "본문 미끼 — 지혜를 성공·처세 공식으로 바꾸면 본문을 미끼로 쓴 것."
+      },
+      {
+        "key": "psalm_lament",
+        "name": "시편·탄식",
+        "native_register": "회중과 함께 울고 함께 노래한다 — 정서를 봉합하지 않고 정직하게 통과.",
+        "cadence": "낮고 느린 호흡. 탄식의 정직을 서둘러 위로로 덮지 않는다.",
+        "tone_affinity": ["pastor"],
+        "lexicon_avoid": ["그러니 낙심하지 마십시오(조기 봉합)", "감사하면 됩니다(정서 무시)"],
+        "watch": "선동·조기봉합 — 탄식의 무게를 건너뛰고 값싼 위로로 정서를 *제조*하면 L1 §3-④ 위반."
+      },
+      {
+        "key": "epistle",
+        "name": "서신",
+        "native_register": "본문의 논증을 회중을 향한 직접 권면으로 옮긴다 — 2인칭이 정당한 자리.",
+        "cadence": "논증의 단단한 전개 + 직접 호명의 적용. 명료하게, 그러나 '우리'로.",
+        "tone_affinity": ["catechist", "expositor"],
+        "lexicon_avoid": ["사도가 말하기를(인용 나열)", "본 절은 ~을 다룹니다(해설투)"],
+        "watch": "강사화 — 신학 논증을 *해설*하느라 회중 호명을 잃으면 강의로 굳는다."
+      },
+      {
+        "key": "prophetic_apocalyptic",
+        "name": "예언·묵시",
+        "native_register": "심판과 소망을 높은 어조로 선포하되, 설교자가 먼저 그 말씀 아래 선다.",
+        "cadence": "고조되는 선포의 리듬, 경고와 소망의 교차. 확신은 어조이지 채점이 아니다.",
+        "tone_affinity": ["prophet"],
+        "lexicon_avoid": ["너희는 심판받을 것이다(면제된 정죄)", "내가 단언하건대"],
+        "watch": "재판관화 — 심판 선포가 '우리' 없이 회중 위에서 떨어지면 부패(homiletic-voice §3-②)."
+      }
+    ],
+
+    "tier": [
+      {
+        "key": "expository",
+        "name": "강해",
+        "persona_ref": "personas/Preacher_Expositor.md",
+        "register_note": "본문 구조를 따라가는 충실. register는 본문장르가 주도하고 tier는 따라간다.",
+        "tightens": "본문의 결을 따라 동선을 잡되, 절별 해설이 강의가 되지 않게.",
+        "watch": "강사화 — 강해가 주석 낭독으로 미끄러지는 것이 이 tier의 상시 위험."
+      },
+      {
+        "key": "prophetic",
+        "name": "예언적",
+        "persona_ref": "personas/Preacher_Prophet.md",
+        "register_note": "시대·구조·양심을 향한 선포. 높은 어조가 정당하나 '우리' 가드레일이 가장 중요.",
+        "tightens": "선포의 칼날을 회중과 *함께* 든다 — 설교자가 면제되지 않는다.",
+        "watch": "재판관화(최고 위험) · 정치 편향(redteam이 별도 차단)."
+      },
+      {
+        "key": "pastoral",
+        "name": "목회적",
+        "persona_ref": "personas/Preacher_Pastor.md",
+        "register_note": "위로·동행. 낮고 따뜻한 음성, 삶의 구체성.",
+        "tightens": "추상 신학보다 삶의 자리. 동행하되 본문의 부름을 흐리지 않는다.",
+        "watch": "본문 미끼 — 위로를 위해 본문의 찌름을 제거하면 치료사 화법으로 미끄러짐."
+      },
+      {
+        "key": "evangelistic",
+        "name": "전도",
+        "persona_ref": "personas/Preacher_Evangelist.md",
+        "register_note": "복음의 초청·결단. 명료한 선포와 부름.",
+        "tightens": "결단을 *청하되* 제조하지 않는다 — 찌르고 돌이키는 일은 성령께.",
+        "watch": "선동(최고 위험) — 감정 고조로 결심을 짜내면 L1 §3-④ 위반."
+      },
+      {
+        "key": "catechetical",
+        "name": "교리",
+        "persona_ref": "personas/Preacher_Catechist.md",
+        "register_note": "가르침·신앙 양육. 명료한 설명이 정당하나 강사화 경계가 본질적.",
+        "tightens": "가르치되 회중을 향해 돌아선다 — 교리를 *해설*만 하지 말고 고백으로 옮긴다.",
+        "watch": "강사화(tier 자체가 위험) — 교리 강의가 되어 케리그마적 호명을 잃지 않게."
+      }
+    ],
+
+    "season": [
+      {
+        "key": "advent",
+        "name": "대림",
+        "register_color": "기다림의 긴장과 깨어 있음. 아직-이룸의 사이에서.",
+        "watch": "성탄으로 조급히 건너뛰지 않기 — 기다림의 긴장 보존."
+      },
+      {
+        "key": "christmas",
+        "name": "성탄",
+        "register_color": "성육신의 경이와 기쁨, 낮아지심의 신비.",
+        "watch": "감상으로 흐르지 않기 — 구유의 낮아짐과 십자가의 그림자 보존."
+      },
+      {
+        "key": "epiphany",
+        "name": "주현",
+        "register_color": "나타나심·드러나심. 빛과 부르심.",
+        "watch": null
+      },
+      {
+        "key": "lent",
+        "name": "사순",
+        "register_color": "회개·절제·자기성찰. 낮은 음성, 십자가를 향한 길.",
+        "watch": "재판관화 — 회개 강조가 '우리' 없는 정죄로 기울지 않게."
+      },
+      {
+        "key": "holy_week",
+        "name": "고난주간",
+        "register_color": "가장 낮은 음성. 고난의 무게를 서둘러 부활로 덮지 않는다.",
+        "watch": "조기봉합 — 십자가의 어둠을 통과하지 않고 곧장 영광으로 건너뛰지 않기."
+      },
+      {
+        "key": "easter",
+        "name": "부활",
+        "register_color": "선포의 기쁨과 확신. 죽음을 이긴 생명의 케리그마.",
+        "watch": "본문이 탄식·고난이면 부활의 색이 그 결을 죽이지 않게(conflict_rule)."
+      },
+      {
+        "key": "pentecost",
+        "name": "성령강림",
+        "register_color": "성령의 부으심·교회의 탄생·보내심.",
+        "watch": null
+      },
+      {
+        "key": "ordinary",
+        "name": "연중·성령강림후",
+        "register_color": "절기 색 없음 — 본문장르·tier가 register를 온전히 주도.",
+        "watch": null
+      },
+      {
+        "key": "thanksgiving",
+        "name": "추수감사",
+        "register_color": "감사와 청지기직. 받은 은혜의 고백.",
+        "watch": "값싼 번영 감사로 흐르지 않기 — 고난 중의 감사도 함께."
+      }
+    ],
+
+    "audience_modulation": {
+      "_comment": "★ 청중은 프리셋이 아니다. 목회 윤리 헌법: AI가 회중을 *추정하지 않는다*. audience_profile.json(목회자 작성)이 있을 때만 음높이·구체성을 조율하고, 없으면 보편 폴백(특정 회중을 상상하지 않는다). 아래는 *조율 지침*이지 회중 목록이 아니다.",
+      "modulate_by": {
+        "정서(affect)": "소진·애통한 회중엔 음성을 낮추고 위로의 무게를, 안일한 회중엔 도전의 무게를. (같은 본문도 회중에 따라 무게중심 이동 — 단 본문 왜곡 없이.)",
+        "신앙색채(faith_texture)": "구도자·새신자엔 전제 없이 풀어, 성숙한 회중엔 깊이로. 전문 용어·헬라어는 회중에 맞춰 절제.",
+        "상황(situation)": "위기·상실·전환을 지나는 회중의 자리에 본문을 닿게(목회자가 명시한 상황만).",
+        "예전위치(liturgical_setting)": "주일 대예배/오후예배/새벽/장례/혼례 등 예전 자리에 맞춰 길이·어조 조율.",
+        "연령(age)": "회중 연령대의 언어·예화 접점(목회자 입력 기준)."
+      },
+      "hard_rule": "audience_profile.json 없으면 이 축은 비활성 — 보편 폴백. 회중을 지어내 register를 좁히지 않는다.",
+      "input_ref": "input/audience_profile.json (목회자 작성·로컬 자산, 회중 프로파일 원칙)",
+      "schema_ref": "data/audience_profile.example.json (스키마·예시; 5차원이 voice_resolve AUDIENCE_KEYS와 일치)"
+    }
+  },
+
+  "personas": {
+    "_comment": "어조 차용원(tone source) 5종 = 설교 직임. tier 5종과 정렬되며 각 tier.persona_ref가 가리킨다. text_genre.tone_affinity는 장르가 빌리는 어조(persona key)를 가리킨다. 불변식: ① 어조만 차용 — 견해·신학입장·교파교의 인용이 아니다. ② 모두 L1 보편 헌장을 공유하는 register 변주 — 정체성이 아니다('회중 채점'을 가질 수 없다). ③ L1 보편 위에, (있으면) L1-개인 아래에 얹힌다(L1-개인을 덮지 못함). ④ 각 persona의 *고유 위험*은 homiletic-voice.md §6 계기판·해당 tier.watch와 연결된다. TSPP 자체 파일이며 TAWP/TOS 런타임 의존이 아니다(단독 레포).",
+    "borrow_rule": "어조만(tone only). 견해 아님. L1 보편 공유. L1-개인 우선.",
+    "set": [
+      { "key": "expositor",  "name": "강해자",  "tier": "expository",    "file": "personas/Preacher_Expositor.md",  "voice": "본문의 결을 따라가는 충실",       "risk": "강사화" },
+      { "key": "prophet",    "name": "예언자",  "tier": "prophetic",     "file": "personas/Preacher_Prophet.md",    "voice": "시대·양심을 향한 담대한 선포('우리')", "risk": "재판관화·정치편향" },
+      { "key": "pastor",     "name": "목자",    "tier": "pastoral",      "file": "personas/Preacher_Pastor.md",     "voice": "고난의 자리에 동행하는 낮은 음성", "risk": "본문미끼(치료사화)·조기봉합" },
+      { "key": "evangelist", "name": "전도자",  "tier": "evangelistic",  "file": "personas/Preacher_Evangelist.md", "voice": "복음의 초청·결단의 부름",         "risk": "선동·감정조작" },
+      { "key": "catechist",  "name": "교사",    "tier": "catechetical",  "file": "personas/Preacher_Catechist.md",  "voice": "신앙을 빚는 가르침(교리→고백)",   "risk": "강사화" }
+    ]
+  },
+
+  "theological_lens": {
+    "_comment": "신학 전통(개혁·루터·해방·오순절·목회 등)은 register와 *다른 축*이다(TOS lenses/ 18종은 신학 관점 축이라 보이스 L1/L2와 충돌 없음). register(음색)가 아니라 *관점*이므로 이 팔레트의 4축에 포함하지 않는다. 목회자의 신학 전통은 별도 선택 입력이며, 향후 TOS lenses를 *관점 입력*으로 연결할 여지(보이스 3층 원칙). TSPP 단독 레포 원칙상 런타임 의존은 두지 않는다.",
+    "axis": "orthogonal_to_register",
+    "optional_future_input": "TOS lenses/ (reformed·lutheran·liberation·pentecostal·pastoral 등)"
+  },
+
+  "composition_examples": [
+    {
+      "_comment": "4축 합성 예 1 — 같은 본문도 축 조합에 따라 register가 달라진다.",
+      "inputs": { "text_genre": "psalm_lament", "tier": "pastoral", "season": "lent", "audience": "상실을 지나는 소진된 회중" },
+      "resolved_L2_stance": "탄식시의 정직을 함께 통과하며, 사순의 낮은 음성으로 상실의 자리에 머문다 — 위로를 서둘러 덮지 않고, 함께 울다 본문이 여는 소망으로 천천히 옮긴다.",
+      "cadence": "낮고 느린 호흡, 여백을 둔다. 조기 위로 금지.",
+      "lexicon_avoid": ["낙심하지 마십시오", "감사하면 됩니다"],
+      "layered_on": "L1-개인(있으면) 위에, L1 보편(거주-전향) 위에."
+    },
+    {
+      "_comment": "합성 예 2 — 절기 색과 본문장르가 정렬되는 경우.",
+      "inputs": { "text_genre": "gospel_parable", "tier": "evangelistic", "season": "easter", "audience": null },
+      "resolved_L2_stance": "부활의 확신 가운데 비유의 전복을 살려, 익숙한 전제를 깨고 회중을 결단으로 *초청*한다 — 짜내지 않고 청한다.",
+      "cadence": "전개의 긴장 → 반전 → 열린 초청. 선포의 기쁨, 그러나 감정 제조 금지.",
+      "lexicon_avoid": ["이 비유의 교훈은", "지금 결단하지 않으면(위협)"],
+      "note": "audience_profile 없음 → audience 축 비활성, 보편 폴백."
+    },
+    {
+      "_comment": "합성 예 3 — conflict_rule 발동(절기 색 vs 본문장르).",
+      "inputs": { "text_genre": "psalm_lament", "tier": "expository", "season": "easter", "audience": null },
+      "resolved_L2_stance": "부활절이라도 본문이 탄식이면 그 결을 죽이지 않는다 — 탄식 안에 서서, 부활의 빛이 그 어둠을 *건너뛰지 않고* 통과해 비추게 한다.",
+      "cadence": "탄식의 낮은 호흡 우선, 소망은 봉합이 아니라 통과로.",
+      "conflict_resolution": "text_genre 우선(resolution.conflict_rule) — 절기가 본문을 덮지 않는다."
+    }
+  ]
+}
