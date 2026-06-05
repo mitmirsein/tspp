@@ -36,6 +36,28 @@ from datetime import datetime, timezone
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _ROOT = os.path.dirname(_HERE)
+
+def _load_dotenv():
+    """간이 .env 로더 — python-dotenv 미사용. 기존 환경변수는 덮어쓰지 않음."""
+    p = os.path.join(_ROOT, ".env")
+    if not os.path.exists(p):
+        return
+    try:
+        with open(p, encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                k, v = line.split("=", 1)
+                k = k.strip()
+                v = v.strip().strip('"').strip("'")
+                if k and k not in os.environ:
+                    os.environ[k] = v
+    except OSError:
+        pass
+
+_load_dotenv()
+
 sys.path.insert(0, _HERE)
 try:
     from query_expand import best_query_for_engine, DEFAULT_ENGINE_ROUTING

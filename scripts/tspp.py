@@ -14,6 +14,28 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parent.parent
+
+def _load_dotenv():
+    """간이 .env 로더 — python-dotenv 미사용. 기존 환경변수는 덮어쓰지 않음."""
+    p = ROOT / ".env"
+    if not p.exists():
+        return
+    try:
+        with p.open(encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                k, v = line.split("=", 1)
+                k = k.strip()
+                v = v.strip().strip('"').strip("'")
+                if k and k not in os.environ:
+                    os.environ[k] = v
+    except OSError:
+        pass
+
+_load_dotenv()
+
 SCRIPTS = ROOT / "scripts"
 # 산출물 루트. 기본은 엔진 폴더(ROOT)지만, 호스트(Obsidian 플러그인 등)가
 # TSPP_WORKSPACE 환경변수를 주입하면 output/input 루트가 그쪽으로 옮겨간다.
