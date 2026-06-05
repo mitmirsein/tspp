@@ -7,9 +7,11 @@
 - 엔진별 건수 제한(--per-engine-limit, 기본 3) — 대량 다운로드 방지.
 - 순수 stdlib(urllib). 한국어 엔진(KCI/NLK)은 OA 직링크가 없어 건너뛴다(수동 입수).
 - 파일명은 DOI 슬러그 → resource_ingest의 'stem==DOI 슬러그' 규칙으로 자동 매칭.
-"""
-from __future__ import annotations
 
+사용:
+    python scripts/oa_fetch.py --pack output/<run>/EvidencePack.json \
+        --out input/resources/<run> --email you@example.com --per-engine-limit 3
+"""
 import argparse
 import json
 import re
@@ -20,7 +22,7 @@ import urllib.request
 from pathlib import Path
 
 PDF_MAGIC = b"%PDF-"
-MAX_BYTES = 25_000_000
+MAX_BYTES = 25_000_000  # 25MB/파일 상한
 OA_ENGINES = {"semantic-scholar", "crossref-journal-searcher"}
 
 
@@ -47,14 +49,14 @@ def download_pdf(url: str, dest: Path, email: str) -> bool:
         with http_get(url, email, 90, "application/pdf,*/*") as r:
             ctype = (r.headers.get("Content-Type") or "").lower()
             data = r.read(MAX_BYTES)
-    except Exception as e:  # noqa: BLE001
-        log(f"  x 다운로드 실패: {e}\n")
+    except Exception as e:
+        log(f"  ✗ 다운로드 실패: {e}\n")
         return False
     if not (data[:5] == PDF_MAGIC or "pdf" in ctype):
-        log(f"  x PDF 아님(Content-Type={ctype or '?'})\n")
+        log(f"  ✗ PDF 아님(Content-Type={ctype or '?'})\n")
         return False
     dest.write_bytes(data)
-    log(f"  ok {dest.name} ({len(data) // 1024} KB)\n")
+    log(f"  ✓ {dest.name} ({len(data) // 1024} KB)\n")
     return True
 
 
@@ -63,8 +65,8 @@ def unpaywall_pdf(doi: str, email: str) -> str | None:
     try:
         with http_get(u, email, 30, "application/json") as r:
             d = json.loads(r.read().decode("utf-8", "replace"))
-    except Exception as e:  # noqa: BLE001
-        log(f"  x Unpaywall 조회 실패({doi}): {e}\n")
+    except Exception as e:
+        log(f"  ✗ Unpaywall 조회 실패({doi}): {e}\n")
         return None
     loc = d.get("best_oa_location") or {}
     return loc.get("url_for_pdf") or None
@@ -99,29 +101,29 @@ def main() -> int:
         sid = r.get("source_id") or ""
         dest = out / (slug(doi or sid, f"rec{i}") + ".pdf")
         if dest.exists():
-            log(f"- 이미 있음, 건너뜀: {dest.name}\n")
+            log(f"· 이미 있음, 건너뜀: {dest.name}\n")
             continue
 
         url = None
         if eng == "semantic-scholar":
             url = (r.get("pdf_url") or "").strip() or None
         elif eng == "crossref-journal-searcher" and doi:
-            log(f"- Unpaywall 조회: {doi}\n")
+            log(f"· Unpaywall 조회: {doi}\n")
             url = unpaywall_pdf(doi, email)
         if not url:
             continue
 
-        log(f"- [{eng}] {r.get('title', '')[:50]}\n")
+        log(f"· [{eng}] {r.get('title', '')[:50]}\n")
         if download_pdf(url, dest, email):
             counts[eng] = counts.get(eng, 0) + 1
             got += 1
-        time.sleep(1)
+        time.sleep(1)  # polite delay
 
-    log(f"\n[oa_fetch] 완료: {got}건 -> {out}\n")
+    log(f"\n[oa_fetch] 완료: {got}건 → {out}\n")
     for e, c in counts.items():
         log(f"  {e}: {c}건\n")
     if got == 0:
-        log("  (OA 직링크/Unpaywall OA가 없어 받은 게 없습니다. 한국어 자료는 수동 입수하세요.)\n")
+        log("  (OA 직링크/Unpaywall OA가 없어 받은 게 없습니다. 한국어 자료는 [원문 열기]로 수동 입수하세요.)\n")
     return 0
 
 

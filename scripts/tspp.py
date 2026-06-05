@@ -15,6 +15,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 SCRIPTS = ROOT / "scripts"
+# 산출물 루트. 기본은 엔진 폴더(ROOT)지만, 호스트(Obsidian 플러그인 등)가
+# TSPP_WORKSPACE 환경변수를 주입하면 output/input 루트가 그쪽으로 옮겨간다.
+# 엔진 코드와 산출물(목회자 자산)을 분리하기 위한 surgical 훅. (DESIGN #6-1)
 WORKSPACE = Path(os.environ.get("TSPP_WORKSPACE") or ROOT).resolve()
 DEFAULT_ENGINES = "kci-api-searcher,nlk-ejournal-searcher,semantic-scholar,crossref-journal-searcher"
 
@@ -24,6 +27,7 @@ def run_dir(run: str) -> Path:
 
 
 def input_dir(run: str) -> Path:
+    # 사람이 주는 입력(묵상 씨앗·보이스)은 산출물과 분리해 input/<run>/ 아래 둔다.
     return WORKSPACE / "input" / run
 
 
@@ -70,11 +74,9 @@ def cmd_status(args: argparse.Namespace) -> int:
         ("resolved voice", inp / "resolved_voice.json"),
         ("EvidencePack", out / "EvidencePack.json"),
         ("evidence list", out / "evidence_list.md"),
-        ("selected evidence", out / "selected_evidence.json"),
         ("resource manifest", out / "resource_manifest.json"),
         ("analysis packet", out / "resource_analysis_packet.md"),
         ("writing brief", out / "writing_brief.json"),
-        ("outline draft", out / "sermon_outline_draft.md"),
     ]
     print(f"[tspp] status: {args.run}")
     for label, path in paths:
@@ -120,21 +122,20 @@ def cmd_list(args: argparse.Namespace) -> int:
     out = run_dir(args.run)
     evidence = args.evidence or out / "EvidencePack.json"
     target = args.out or out / "evidence_list.md"
-    cmd = [
+    return call([
         sys.executable,
         str(SCRIPTS / "evidence_list.py"),
         "--evidence",
         str(evidence),
         "--out",
         str(target),
-    ]
-    keywords_file = args.keywords_file or input_dir(args.run) / "meditation_seed.json"
-    if keywords_file and Path(keywords_file).exists():
-        cmd.extend(["--keywords-file", str(keywords_file)])
-    return call(cmd)
+    ])
 
 
 def cmd_ingest(args: argparse.Namespace) -> int:
+    # resource_ingest.py는 run만 받으면 엔진 폴더 기준 output/input을 자체 계산한다.
+    # 워크스페이스가 엔진 밖으로 옮겨졌을 수 있으므로 경로를 명시 전달한다.
+    # (--manifest의 부모에서 resource_analysis_packet.md 위치가 파생됨)
     out = run_dir(args.run)
     res = resource_dir(args.run)
     cmd = [
@@ -155,7 +156,26 @@ def cmd_ingest(args: argparse.Namespace) -> int:
     return call(cmd)
 
 
+def cmd_preflight(args: argparse.Namespace) -> int:
+    out = run_dir(args.run)
+    cmd = [
+        sys.executable,
+        str(SCRIPTS / "outline_preflight.py"),
+        "--meditation-seed",
+        str(args.meditation_seed),
+        "--resolved-voice",
+        str(args.resolved_voice),
+        "--out",
+        str(args.out or out / "writing_brief.json"),
+    ]
+    evidence = args.evidence or out / "EvidencePack.json"
+    if evidence.exists():
+        cmd.extend(["--evidence", str(evidence)])
+    return call(cmd)
+
+
 def cmd_fetch(args: argparse.Namespace) -> int:
+    # OA PDF 자동 입수(S2 직링크 + Crossref/Unpaywall) → input/resources/<run>/.
     out = run_dir(args.run)
     res = resource_dir(args.run)
     res.mkdir(parents=True, exist_ok=True)
@@ -172,7 +192,23 @@ def cmd_fetch(args: argparse.Namespace) -> int:
     return call(cmd)
 
 
+def cmd_audit(args: argparse.Namespace) -> int:
+    # 작성된 개요를 호밀레틱 계기판(비점수 worklist)으로 점검.
+    out = run_dir(args.run)
+    cmd = [
+        sys.executable,
+        str(SCRIPTS / "homiletic_audit.py"),
+        "--draft", str(out / "sermon_outline.md"),
+        "--out", str(out / "homiletic_audit.json"),
+    ]
+    rv = input_dir(args.run) / "resolved_voice.json"
+    if rv.exists():
+        cmd.extend(["--resolved", str(rv)])
+    return call(cmd)
+
+
 def cmd_voice(args: argparse.Namespace) -> int:
+    # 보이스 3층 합성 → input/<run>/resolved_voice.json (preflight의 필수 입력).
     out = input_dir(args.run) / "resolved_voice.json"
     out.parent.mkdir(parents=True, exist_ok=True)
     cmd = [
@@ -188,39 +224,6 @@ def cmd_voice(args: argparse.Namespace) -> int:
         cmd.extend(["--preacher-voice", str(args.preacher_voice)])
     if args.audience:
         cmd.extend(["--audience", str(args.audience)])
-    return call(cmd)
-
-
-def cmd_preflight(args: argparse.Namespace) -> int:
-    out = run_dir(args.run)
-    meditation_seed = args.meditation_seed or input_dir(args.run) / "meditation_seed.json"
-    resolved_voice = args.resolved_voice or input_dir(args.run) / "resolved_voice.json"
-    cmd = [
-        sys.executable,
-        str(SCRIPTS / "outline_preflight.py"),
-        "--meditation-seed",
-        str(meditation_seed),
-        "--resolved-voice",
-        str(resolved_voice),
-        "--out",
-        str(args.out or out / "writing_brief.json"),
-    ]
-    evidence = args.evidence or out / "EvidencePack.json"
-    if evidence.exists():
-        cmd.extend(["--evidence", str(evidence)])
-    return call(cmd)
-
-
-def cmd_outline_draft(args: argparse.Namespace) -> int:
-    out = run_dir(args.run)
-    cmd = [
-        sys.executable,
-        str(SCRIPTS / "outline_draft.py"),
-        "--brief",
-        str(args.brief or out / "writing_brief.json"),
-        "--out",
-        str(args.out or out / "sermon_outline_draft.md"),
-    ]
     return call(cmd)
 
 
@@ -250,7 +253,6 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("run")
     p.add_argument("--evidence", type=Path)
     p.add_argument("--out", type=Path)
-    p.add_argument("--keywords-file", type=Path, help="Default: input/<run>/meditation_seed.json")
     p.set_defaults(func=cmd_list)
 
     p = sub.add_parser("ingest", help="Extract selected resources into citation-safe text")
@@ -263,7 +265,11 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--per-engine-limit", type=int, default=3)
     p.set_defaults(func=cmd_fetch)
 
-    p = sub.add_parser("voice", help="Resolve preaching voice into input/<run>/resolved_voice.json")
+    p = sub.add_parser("audit", help="Homiletic voice worklist on sermon_outline.md (non-score)")
+    p.add_argument("run")
+    p.set_defaults(func=cmd_audit)
+
+    p = sub.add_parser("voice", help="Resolve preaching voice → resolved_voice.json")
     p.add_argument("run")
     p.add_argument("--genre", required=True, help="본문장르 키 (예: gospel_parable)")
     p.add_argument("--tier", required=True, help="설교 유형 키 (예: pastoral)")
@@ -274,17 +280,11 @@ def build_parser() -> argparse.ArgumentParser:
 
     p = sub.add_parser("preflight", help="Build writing_brief.json after HITL approvals")
     p.add_argument("run")
-    p.add_argument("--meditation-seed", type=Path, help="Default: input/<run>/meditation_seed.json")
-    p.add_argument("--resolved-voice", type=Path, help="Default: input/<run>/resolved_voice.json")
+    p.add_argument("--meditation-seed", type=Path, required=True)
+    p.add_argument("--resolved-voice", type=Path, required=True)
     p.add_argument("--evidence", type=Path)
     p.add_argument("--out", type=Path)
     p.set_defaults(func=cmd_preflight)
-
-    p = sub.add_parser("outline-draft", help="Render writing_brief.json into a human-fillable outline draft")
-    p.add_argument("run")
-    p.add_argument("--brief", type=Path, help="Default: output/<run>/writing_brief.json")
-    p.add_argument("--out", type=Path, help="Default: output/<run>/sermon_outline_draft.md")
-    p.set_defaults(func=cmd_outline_draft)
 
     return parser
 
@@ -297,3 +297,4 @@ def main(argv: list[str] | None = None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+

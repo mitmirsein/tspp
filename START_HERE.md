@@ -29,33 +29,25 @@ TSPP는 설교 준비를 돕습니다. 설교자를 대체하지 않습니다.
 python3 scripts/tspp.py status <run>
 python3 scripts/tspp.py search <run> --query "<본문 또는 주제>"
 python3 scripts/tspp.py list <run>
-python3 scripts/tspp.py fetch <run>
 python3 scripts/tspp.py ingest <run>
-python3 scripts/tspp.py voice <run> --genre gospel_parable --tier pastoral --season ordinary
-python3 scripts/tspp.py preflight <run>
-python3 scripts/tspp.py outline-draft <run>
 ```
 
 ## 기본 실행 폴더 구조
 
 ```text
-input/<run>/meditation_seed.json          승인된 묵상 씨앗
-input/<run>/resolved_voice.json           선택된 보이스 합성 결과
 input/resources/<run>/                    사용자가 추가한 PDF 또는 텍스트 원문
 output/<run>/EvidencePack.json            통합 검색 결과
 output/<run>/evidence_list.md             사람이 고르는 원문 확보 리스트
 output/<run>/resources/*.txt              페이지 표지가 붙은 추출 원문
 output/<run>/resource_manifest.json       원문 파일과 검색 기록 매핑
 output/<run>/resource_analysis_packet.md  LLM 분석 시작 패킷
-output/<run>/writing_brief.json           개요 작성 전 게이트 브리프
-output/<run>/sermon_outline_draft.md      사람이 채우는 개요 초안 골격
 ```
 
 ## 기본 검색 라우팅
 
 - 한글 키워드: KCI OpenAPI와 NLK 전자저널 API
 - 영어 키워드: Semantic Scholar Graph API와 Crossref REST API
-- `input/<run>/meditation_seed.json`이 있으면 아래 필드를 우선 사용합니다.
+- `meditation_seed.json`이 있으면 아래 필드를 우선 사용합니다.
   `evidence.keywords_used.ko`, `evidence.keywords_used.en`
 
 ## PDF 추출
@@ -81,9 +73,8 @@ python3 scripts/tspp.py init <run>
 python3 scripts/tspp.py status <run>
 python3 scripts/tspp.py search <run> --query "<본문 또는 주제>"
 python3 scripts/tspp.py list <run>
-python3 scripts/tspp.py fetch <run>
 python3 scripts/tspp.py ingest <run>
-python3 scripts/tspp.py voice <run> --genre gospel_parable --tier pastoral --season ordinary
-python3 scripts/tspp.py preflight <run>
-python3 scripts/tspp.py outline-draft <run>
+python3 scripts/tspp.py preflight <run> \
+  --meditation-seed output/<run>/meditation_seed.json \
+  --resolved-voice output/<run>/resolved_voice.json
 ```
