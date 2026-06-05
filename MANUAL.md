@@ -23,7 +23,9 @@
                               ▼
                   ⑤ 설교 개요 작성(에이전트) ──▶ sermon_outline (계기판→HITL)
                               ▼  (선택)
-                  ⑥ 전체 원고 확장 + 전달 준비물 ──▶ full_manuscript (계기판→HITL)
+                   ⑥ 전체 원고 확장 + 전달 준비물 ──▶ full_manuscript (계기판→HITL)
+                               ▼  (선택)
+                   ⑦ 정성적 품질 검수(에이전트) ──▶ sermon_review_report (에이전트)
 ```
 
 핵심 분업 — **스크립트는 측정·게이트·구조 합성만, 산문(묵상·개요·설교)은 에이전트, 확정은 설교자(HITL).**
@@ -256,6 +258,18 @@ python scripts/homiletic_audit.py --draft output/$RUN/full_manuscript.md \
 
 - `delivery_pack.py`: 전체·섹션별 전달 시간(±15% under/on/over, 40% 쏠림 점검) + 낭독 보조(긴 문장 호흡·원어 발음[그리스어/히브리어 자동검출]·숫자 읽기·긴 어절). **측정만** — 언어 조정 산문(`delivery_pack.md`)은 에이전트가 정리.
 - 시간은 *대략* 추정(설교자별 `--chars-per-min` 보정 권장).
+
+### ⑦ 정성적 품질 검수 — `sermon_review_report.md`
+
+개요 또는 전체 원고가 완성되면, 기계적 측정을 넘어 신학적 깊이, 본문 정합성, 보이스 일치성, 긴장(아포리아) 보존 여부 등을 에이전트가 정성 비평하도록 뼈대를 구성하고 지시한다.
+
+```bash
+# 1) 품질 검수 보고서 뼈대 생성 (본문, 주제 자동 치환)
+python scripts/tspp.py review $RUN
+
+# 2) 에이전트(sermon-reviewer)를 구동하여 output/$RUN/sermon_review_report.md를 완성시킴.
+#    에이전트는 skills/sermon-reviewer/SKILL.md 규격에 따라 5대 핵심 차원 평가를 산문으로 서술함.
+```
 
 ---
 

@@ -371,6 +371,61 @@ def cmd_delivery(args: argparse.Namespace) -> int:
     return call(cmd_audit)
 
 
+def cmd_review(args: argparse.Namespace) -> int:
+    import json
+    import time
+    out = run_dir(args.run)
+    brief_path = out / "writing_brief.json"
+    outline_path = out / "sermon_outline.md"
+    
+    if not brief_path.is_file():
+        print(f"[tspp] writing_brief.json 파일이 없습니다. preflight를 먼저 실행하십시오.", file=sys.stderr)
+        return 1
+    if not outline_path.is_file():
+        print(f"[tspp] sermon_outline.md 파일이 없습니다. 개요를 먼저 작성하십시오.", file=sys.stderr)
+        return 1
+
+    # brief 정보 읽기
+    try:
+        brief = json.loads(brief_path.read_text(encoding="utf-8"))
+        passage = brief.get("passage", "미지정 본문")
+        theme = brief.get("theme", "미지정 주제")
+    except Exception as e:
+        print(f"[tspp] writing_brief.json을 읽는 중 오류 발생: {e}", file=sys.stderr)
+        passage, theme = "미지정 본문", "미지정 주제"
+
+    report_path = out / "sermon_review_report.md"
+    if report_path.is_file() and not args.overwrite:
+        print(f"[tspp] 이미 리뷰 보고서 파일이 존재합니다: {rel(report_path)}")
+        print("[tspp] 보고서를 다시 초기화하려면 --overwrite 옵션을 사용하십시오.")
+        return 0
+
+    # 템플릿 복사 및 치환
+    tpl_path = ROOT / "skills" / "sermon-reviewer" / "templates" / "review_report.example.md"
+    if not tpl_path.is_file():
+        print(f"[tspp] 리뷰 템플릿 파일이 없습니다: {rel(tpl_path)}", file=sys.stderr)
+        return 1
+
+    try:
+        tpl_content = tpl_path.read_text(encoding="utf-8")
+        timestamp = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+        
+        content = tpl_content
+        content = content.replace("${RUN_ID}", args.run)
+        content = content.replace("${PASSAGE}", passage)
+        content = content.replace("${THEME}", theme)
+        content = content.replace("${TIMESTAMP}", timestamp)
+
+        report_path.write_text(content, encoding="utf-8")
+        print(f"[tspp] 설교 품질 검수 보고서 스켈레톤이 생성되었습니다: {rel(report_path)}")
+        print("[tspp] 이제 에이전트(sermon-reviewer)를 구동하여 검수 보고서(산문)를 완성하십시오.")
+    except OSError as e:
+        print(f"[tspp] 보고서 파일 생성 중 오류 발생: {e}", file=sys.stderr)
+        return 1
+
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="TSPP workflow helper")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -440,6 +495,11 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--target-min", type=float, help="Target sermon length in minutes")
     p.add_argument("--chars-per-min", type=float, help="Estimated speaking rate (characters per minute)")
     p.set_defaults(func=cmd_delivery)
+
+    p = sub.add_parser("review", help="Initialize qualitative review report skeleton")
+    p.add_argument("run")
+    p.add_argument("--overwrite", action="store_true", help="Overwrite existing review report")
+    p.set_defaults(func=cmd_review)
 
     return parser
 
