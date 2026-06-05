@@ -244,7 +244,7 @@ def _make_cmd(meta: dict, entry: str, builder, q: str, lim: int):
         skill_path = os.path.join(_ROOT, meta["path"])
         rel = os.path.relpath(os.path.join(_ROOT, entry), skill_path)
         return ["uv", "run", "python", rel] + builder(q, lim), skill_path
-    return ["uv", "run", "python", entry] + builder(q, lim), _ROOT
+    return [sys.executable, entry] + builder(q, lim), _ROOT
 
 
 def _search_with_retry(cmd, cwd, eng_timeout, lang, q, retries):

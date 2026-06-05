@@ -56,9 +56,22 @@ def build_brief(seed: dict, rv: dict, evidence_path: Path | None) -> dict:
 
     seed_ok = bool((seed.get("hitl") or {}).get("approved"))
     voice_ok = bool((rv.get("hitl") or {}).get("approved"))
-    if not seed_ok:
+
+    # 에이전트 월권 감지 하네스 (Agent Usurpation Detection)
+    agent_signatures = ["antigravity", "claude", "gemini", "agent", "ai", "llm", "bot", "assistant"]
+    seed_approved_by = str((seed.get("hitl") or {}).get("approved_by") or "").lower()
+    voice_approved_by = str((rv.get("hitl") or {}).get("approved_by") or "").lower()
+
+    if seed_ok and (not seed_approved_by or any(sig in seed_approved_by for sig in agent_signatures)):
+        seed_ok = False
+        notes.append("meditation_seed 에이전트 대리 승인 감지 — 설교자(사람)의 수동 서명이 필요합니다. (월권 차단)")
+    if voice_ok and (not voice_approved_by or any(sig in voice_approved_by for sig in agent_signatures)):
+        voice_ok = False
+        notes.append("resolved_voice 에이전트 대리 승인 감지 — 설교자(사람)의 수동 서명이 필요합니다. (월권 차단)")
+
+    if not seed_ok and not any("에이전트 대리 승인" in n for n in notes):
         notes.append("meditation_seed 미승인(hitl.approved=false) — 작성 전 sermon-mentor HITL 필요.")
-    if not voice_ok:
+    if not voice_ok and not any("에이전트 대리 승인" in n for n in notes):
         notes.append("resolved_voice 미승인(hitl.approved=false) — 작성 전 보이스 고정 HITL 필요.")
     ready = seed_ok and voice_ok
 

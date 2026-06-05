@@ -99,6 +99,10 @@ def cmd_status(args: argparse.Namespace) -> int:
         ("resource manifest", out / "resource_manifest.json"),
         ("analysis packet", out / "resource_analysis_packet.md"),
         ("writing brief", out / "writing_brief.json"),
+        ("sermon outline", out / "sermon_outline.md"),
+        ("full manuscript", out / "full_manuscript.md"),
+        ("delivery pack", out / "delivery_pack.json"),
+        ("homiletic audit (manuscript)", out / "homiletic_audit_manuscript.json"),
     ]
     print(f"[tspp] status: {args.run}")
     for label, path in paths:
@@ -249,6 +253,124 @@ def cmd_voice(args: argparse.Namespace) -> int:
     return call(cmd)
 
 
+def cmd_manuscript(args: argparse.Namespace) -> int:
+    out = run_dir(args.run)
+    outline_path = out / "sermon_outline.md"
+    if not outline_path.is_file():
+        print(f"[tspp] 설교 개요 파일이 없습니다: {rel(outline_path)}", file=sys.stderr)
+        return 1
+
+    # 간이 YAML frontmatter 파서
+    approved = False
+    try:
+        with outline_path.open("r", encoding="utf-8") as f:
+            lines = f.readlines()
+        in_frontmatter = False
+        for line in lines:
+            line_strip = line.strip()
+            if line_strip == "---":
+                if in_frontmatter:
+                    break
+                else:
+                    in_frontmatter = True
+                    continue
+            if in_frontmatter:
+                if ":" in line_strip:
+                    k, v = line_strip.split(":", 1)
+                    if k.strip() == "approved":
+                        val = v.strip().lower()
+                        if val in ("true", "yes", "1"):
+                            approved = True
+    except OSError as e:
+        print(f"[tspp] 개요 파일을 읽는 중 오류 발생: {e}", file=sys.stderr)
+        return 1
+
+    if not approved:
+        print(f"[tspp] 설교 개요가 승인(approved: true)되지 않았습니다: {rel(outline_path)}", file=sys.stderr)
+        return 1
+
+    print("[tspp] 설교 개요 승인 확인 완료.")
+
+    manuscript_path = out / "full_manuscript.md"
+    if manuscript_path.is_file() and not args.overwrite:
+        print(f"[tspp] 이미 원고 파일이 존재합니다: {rel(manuscript_path)}")
+        print("[tspp] 원고를 다시 초기화하려면 --overwrite 옵션을 사용하십시오.")
+        return 0
+
+    # sermon_outline.md의 H2 제목들을 추출하여 뼈대 생성
+    h2_titles = []
+    for line in lines:
+        if line.startswith("## "):
+            h2_titles.append(line.strip())
+
+    content = [
+        "---",
+        "schema: tspp.full_manuscript/1",
+        f"run: {args.run}",
+        "approved: false",
+        "---",
+        "",
+        "# 설교 원고 (구어체)",
+        "",
+        "> **머리말** · 구어체 설교 원고.",
+        ""
+    ]
+    for h2 in h2_titles:
+        content.append(h2)
+        content.append("")
+        content.append("*(여기에 구어체 설교 내용을 확장하여 작성하십시오)*")
+        content.append("")
+
+    try:
+        manuscript_path.write_text("\n".join(content), encoding="utf-8")
+        print(f"[tspp] 설교 원고 스켈레톤이 생성되었습니다: {rel(manuscript_path)}")
+    except OSError as e:
+        print(f"[tspp] 원고 파일 생성 중 오류 발생: {e}", file=sys.stderr)
+        return 1
+
+    return 0
+
+
+def cmd_delivery(args: argparse.Namespace) -> int:
+    out = run_dir(args.run)
+    manuscript = out / "full_manuscript.md"
+    if not manuscript.is_file():
+        print(f"[tspp] 설교 원고 파일이 없습니다: {rel(manuscript)}", file=sys.stderr)
+        return 1
+
+    cmd_pack = [
+        sys.executable,
+        str(SCRIPTS / "delivery_pack.py"),
+        "--manuscript", str(manuscript),
+        "--out", str(out / "delivery_pack.json"),
+    ]
+    if args.target_min is not None:
+        cmd_pack.extend(["--target-min", str(args.target_min)])
+    if args.chars_per_min is not None:
+        cmd_pack.extend(["--chars-per-min", str(args.chars_per_min)])
+
+    print("[tspp] 전달 분석(delivery_pack.py) 실행 중...")
+    rc = call(cmd_pack)
+    if rc != 0:
+        return rc
+
+    cmd_audit = [
+        sys.executable,
+        str(SCRIPTS / "homiletic_audit.py"),
+        "--draft", str(manuscript),
+        "--out", str(out / "homiletic_audit_manuscript.json"),
+    ]
+    rv = input_dir(args.run) / "resolved_voice.json"
+    if rv.exists():
+        cmd_audit.extend(["--resolved", str(rv)])
+    pv = input_dir(args.run) / "preacher_voice.json"
+    if pv.exists():
+        cmd_audit.extend(["--preacher-voice", str(pv)])
+
+    print("[tspp] 호밀레틱 감사(homiletic_audit.py) 실행 중...")
+    return call(cmd_audit)
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="TSPP workflow helper")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -307,6 +429,17 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--evidence", type=Path)
     p.add_argument("--out", type=Path)
     p.set_defaults(func=cmd_preflight)
+
+    p = sub.add_parser("manuscript", help="Validate outline approval and initialize manuscript skeleton")
+    p.add_argument("run")
+    p.add_argument("--overwrite", action="store_true", help="Overwrite existing manuscript")
+    p.set_defaults(func=cmd_manuscript)
+
+    p = sub.add_parser("delivery", help="Run delivery analysis and homiletic audit on the manuscript")
+    p.add_argument("run")
+    p.add_argument("--target-min", type=float, help="Target sermon length in minutes")
+    p.add_argument("--chars-per-min", type=float, help="Estimated speaking rate (characters per minute)")
+    p.set_defaults(func=cmd_delivery)
 
     return parser
 
