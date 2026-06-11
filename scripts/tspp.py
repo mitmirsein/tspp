@@ -99,10 +99,16 @@ def cmd_status(args: argparse.Namespace) -> int:
         ("resource manifest", out / "resource_manifest.json"),
         ("analysis packet", out / "resource_analysis_packet.md"),
         ("writing brief", out / "writing_brief.json"),
+        ("scripture pack", out / "scripture_pack.json"),
         ("sermon outline", out / "sermon_outline.md"),
+        ("scripture check (outline)", out / "scripture_check.json"),
+        ("binding check", out / "binding_check.json"),
         ("full manuscript", out / "full_manuscript.md"),
+        ("scripture check (manuscript)", out / "scripture_check_manuscript.json"),
         ("delivery pack", out / "delivery_pack.json"),
         ("homiletic audit (manuscript)", out / "homiletic_audit_manuscript.json"),
+        ("review report", out / "sermon_review_report.md"),
+        ("sermon retro", out / "sermon_retro.md"),
     ]
     print(f"[tspp] status: {args.run}")
     for label, path in paths:
@@ -230,6 +236,9 @@ def cmd_audit(args: argparse.Namespace) -> int:
     rv = input_dir(args.run) / "resolved_voice.json"
     if rv.exists():
         cmd.extend(["--resolved", str(rv)])
+    ledger = WORKSPACE / "output" / "sermon_ledger.json"
+    if ledger.exists():
+        cmd.extend(["--ledger", str(ledger), "--run", args.run])
     return call(cmd)
 
 
@@ -366,6 +375,9 @@ def cmd_delivery(args: argparse.Namespace) -> int:
     pv = input_dir(args.run) / "preacher_voice.json"
     if pv.exists():
         cmd_audit.extend(["--preacher-voice", str(pv)])
+    ledger = WORKSPACE / "output" / "sermon_ledger.json"
+    if ledger.exists():
+        cmd_audit.extend(["--ledger", str(ledger), "--run", args.run])
 
     print("[tspp] 호밀레틱 감사(homiletic_audit.py) 실행 중...")
     return call(cmd_audit)
@@ -423,6 +435,259 @@ def cmd_review(args: argparse.Namespace) -> int:
         print(f"[tspp] 보고서 파일 생성 중 오류 발생: {e}", file=sys.stderr)
         return 1
 
+    return 0
+
+
+RETRO_TEMPLATE = """---
+schema: tspp.sermon_retro/1
+run: {run}
+preached_on:            # 설교일 YYYY-MM-DD (설교자 기입)
+actual_minutes:         # 실제 전달 시간(분) — 기입하면 chars-per-min 보정 제안
+---
+
+# 설교 후 회고 — {run}
+
+> ⚠️ **이 문서는 설교자가 기록한다. AI가 회고를 대필하지 않는다(§2).**
+> 아래 항목은 비워 두어도 된다 — 기록된 것만 장부(ledger)와 다음 준비에 반영된다.
+
+## 가닿은 것
+
+*(어느 단락·어느 문장이 실제로 가닿았는가)*
+
+## 걸린 것
+
+*(전달 중 호흡이 걸리거나, 반응이 멀었거나, 스스로 멈칫한 지점)*
+
+## 스스로 평가
+
+*(본문 충실·보이스·긴장 보존 — 준비 단계의 의도가 강단에서 살았는가)*
+
+## 보이스 메모
+
+*(내 목소리답지 않았던 표현, 다음에 살리고 싶은 어법)*
+
+## 다음에
+
+*(이 본문/주제를 다시 다룬다면, 또는 다음 설교 준비에 넘길 것)*
+"""
+
+
+def cmd_retro(args: argparse.Namespace) -> int:
+    # 설교 후 회고 루프(P2-7): 뼈대 생성(1회차) / 요약·보정 제안·장부 반영(2회차).
+    import json
+    out = run_dir(args.run)
+    if not out.is_dir():
+        print(f"[tspp] run 폴더가 없습니다: {rel(out)}", file=sys.stderr)
+        return 1
+    retro_path = out / "sermon_retro.md"
+
+    if not retro_path.is_file() or args.overwrite:
+        retro_path.write_text(RETRO_TEMPLATE.format(run=args.run), encoding="utf-8")
+        print(f"[tspp] 회고 뼈대가 생성되었습니다: {rel(retro_path)}")
+        print("[tspp] 내용은 설교자가 기록합니다 — 기록 후 같은 명령을 다시 실행하면 장부에 반영됩니다.")
+        return 0
+
+    # 2회차: frontmatter 읽기 → 보정 제안 → 장부 반영 → 보이스 갱신 신호
+    fm = {}
+    text = retro_path.read_text(encoding="utf-8")
+    if text.startswith("---"):
+        end = text.find("\n---", 3)
+        for line in text[3:end].splitlines():
+            if ":" in line and not line.strip().startswith("#"):
+                k, v = line.split(":", 1)
+                fm[k.strip()] = v.split("#", 1)[0].strip().strip('"')
+
+    print(f"[tspp] 회고 요약: {args.run}")
+    actual = fm.get("actual_minutes", "")
+    try:
+        actual_f = float(actual)
+    except ValueError:
+        actual_f = None
+    if actual_f:
+        dp = out / "delivery_pack.json"
+        if dp.is_file():
+            try:
+                t = json.loads(dp.read_text(encoding="utf-8")).get("time", {})
+                est = t.get("estimated_minutes")
+                chars = t.get("chars_no_whitespace")
+                if est:
+                    print(f"- 전달 시간: 실측 {actual_f}분 / 추정 {est}분")
+                if chars:
+                    suggested = round(chars / actual_f)
+                    print(f"- 다음 run의 속도 보정 제안: --chars-per-min {suggested}"
+                          f" (현재 기본 {t.get('chars_per_min', 320)})")
+            except (OSError, json.JSONDecodeError):
+                pass
+    else:
+        print("- actual_minutes 미기입 — 기입하면 전달 속도 보정을 제안합니다.")
+
+    # 장부 반영 (retro frontmatter는 ledger_update가 직접 읽는다)
+    rc = call([sys.executable, str(SCRIPTS / "ledger_update.py"),
+               "--run", args.run, "--workspace", str(WORKSPACE)])
+    if rc != 0:
+        return rc
+
+    # 보이스 갱신 신호: 승인된 원고가 충분히 쌓였으면 voice_ingest 재실행 제안
+    ledger_path = WORKSPACE / "output" / "sermon_ledger.json"
+    try:
+        entries = json.loads(ledger_path.read_text(encoding="utf-8")).get("entries", [])
+        approved = [e for e in entries if e.get("outline_approved")]
+        if len(approved) >= 5:
+            print(f"[tspp] 신호: 승인된 설교가 {len(approved)}편 — 최근 원고를 "
+                  "input/sermon_samples/에 모아 voice_ingest 재실행으로 preacher_voice "
+                  "갱신을 고려하십시오(보이스는 살아 있는 지문, §5).")
+    except (OSError, json.JSONDecodeError):
+        pass
+    return 0
+
+
+def cmd_scripture(args: argparse.Namespace) -> int:
+    # 성경 인용 정합 게이트(P0-1): pericope 팩 생성 + 개요/원고 인용 대조.
+    out = run_dir(args.run)
+    out.mkdir(parents=True, exist_ok=True)
+    seed = input_dir(args.run) / "meditation_seed.json"
+    pack = out / "scripture_pack.json"
+
+    cmd = [sys.executable, str(SCRIPTS / "scripture_pack.py"), "--out", str(pack)]
+    if args.passage:
+        cmd.extend(["--passage", args.passage])
+    elif seed.is_file():
+        cmd.extend(["--seed", str(seed)])
+    else:
+        print("[tspp] meditation_seed.json이 없습니다 — --passage로 본문을 직접 지정하십시오.",
+              file=sys.stderr)
+        return 1
+    translation = args.translation or os.environ.get("TSPP_TRANSLATION", "").strip()
+    if translation:
+        cmd.extend(["--translation", translation])
+    if args.context is not None:
+        cmd.extend(["--context", str(args.context)])
+    rc = call(cmd)
+    if rc != 0:
+        return rc
+
+    # 존재하는 draft를 모두 대조 (개요 → 원고 순)
+    targets = [
+        (out / "sermon_outline.md", out / "scripture_check.json"),
+        (out / "full_manuscript.md", out / "scripture_check_manuscript.json"),
+    ]
+    worst = 0
+    checked = 0
+    for draft, check_out in targets:
+        if not draft.is_file():
+            continue
+        checked += 1
+        check_cmd = [
+            sys.executable, str(SCRIPTS / "scripture_check.py"),
+            "--draft", str(draft), "--pack", str(pack), "--out", str(check_out),
+        ]
+        if translation:
+            check_cmd.extend(["--translation", translation])
+        rc = call(check_cmd)
+        worst = max(worst, rc)
+    if checked == 0:
+        print("[tspp] 대조할 draft(sermon_outline.md / full_manuscript.md)가 아직 없습니다 — 팩만 생성했습니다.")
+    return worst
+
+
+def cmd_binding(args: argparse.Namespace) -> int:
+    # 본문 정합 구조 게이트(P0-2, 헌법 §3): 앵커 존재·범위·교차참조 선언 검증.
+    out = run_dir(args.run)
+    draft = args.draft or out / "sermon_outline.md"
+    seed = input_dir(args.run) / "meditation_seed.json"
+    if not Path(draft).is_file():
+        print(f"[tspp] 개요 파일이 없습니다: {rel(Path(draft))}", file=sys.stderr)
+        return 1
+    if not seed.is_file():
+        print(f"[tspp] meditation_seed.json이 없습니다: {rel(seed)}", file=sys.stderr)
+        return 1
+    cmd = [
+        sys.executable, str(SCRIPTS / "binding_check.py"),
+        "--draft", str(draft), "--seed", str(seed),
+        "--out", str(out / "binding_check.json"),
+    ]
+    translation = getattr(args, "translation", None) or os.environ.get("TSPP_TRANSLATION", "").strip()
+    if translation:
+        cmd.extend(["--translation", translation])
+    brief = out / "writing_brief.json"
+    if brief.is_file():
+        cmd.extend(["--brief", str(brief)])
+    return call(cmd)
+
+
+def cmd_report(args: argparse.Namespace) -> int:
+    # 종합 현황판(P2-8): 기존 산출물 요약 수합만 — 신규 판단 없음(읽기 전용).
+    import json
+
+    def load(p: Path) -> dict:
+        try:
+            return json.loads(p.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            return {}
+
+    out = run_dir(args.run)
+    if not out.is_dir():
+        print(f"[tspp] run 폴더가 없습니다: {rel(out)}", file=sys.stderr)
+        return 1
+    print(f"[tspp] ═══ 종합 현황 — {args.run} ═══ (수합만 — 판단은 설교자)")
+
+    # ① HITL 게이트 (writing_brief)
+    brief = load(out / "writing_brief.json")
+    if brief:
+        g = brief.get("gates", {})
+        print(f"  HITL 게이트: ready={g.get('ready')} "
+              f"(seed={g.get('meditation_seed_approved')} voice={g.get('resolved_voice_approved')})")
+        print(f"  본문: {brief.get('passage')} · 주제: {str(brief.get('theme'))[:40]}")
+    else:
+        print("  HITL 게이트: writing_brief 없음 (preflight 미실행)")
+
+    # ② 본문 정합·인용 게이트
+    b = load(out / "binding_check.json")
+    print(f"  binding: {b.get('verdict', '미실행')}"
+          + (f" — hard {len(b.get('hard', []))} · worklist {len(b.get('worklist', []))}" if b else ""))
+    for name, f in (("scripture(개요)", "scripture_check.json"),
+                    ("scripture(원고)", "scripture_check_manuscript.json")):
+        s = load(out / f)
+        if s:
+            c = s.get("counts", {})
+            print(f"  {name}: {s.get('verdict')} — hard {c.get('hard', 0)} · "
+                  f"불일치 {c.get('worklist', 0)} · 인용 {c.get('quotes', 0)}건")
+
+    # ③ 계기판
+    for name, f in (("계기판(개요)", "homiletic_audit.json"),
+                    ("계기판(원고)", "homiletic_audit_manuscript.json")):
+        a = load(out / f)
+        if a:
+            kinds = [w.get("corruption", "").split(" (")[0] for w in a.get("worklist", [])]
+            print(f"  {name}: {a.get('summary', '')}"
+                  + (f" [{', '.join(kinds)}]" if kinds else ""))
+            for t in a.get("trend", []):
+                print(f"    ↗ {t.get('note')} — {t.get('corruption')}")
+
+    # ④ 전달·흐름
+    d = load(out / "delivery_pack.json")
+    if d:
+        t = d.get("time", {})
+        print(f"  전달: 추정 {t.get('estimated_minutes')}분 "
+              f"(목표 {t.get('target_minutes') or '미지정'})")
+    sc = load(out / "series_check.json")
+    if sc:
+        print(f"  흐름(series): 신호 {len(sc.get('signals', []))}건"
+              + ("".join(f"\n    · [{s['kind']}] {s['detail'][:60]}" for s in sc.get("signals", [])[:4])))
+
+    # ⑤ 검수·회고
+    review = out / "sermon_review_report.md"
+    print(f"  정성 검수: {'있음' if review.is_file() else '없음'} ({rel(review)})")
+    retro = out / "sermon_retro.md"
+    print(f"  회고: {'있음' if retro.is_file() else '없음'}")
+
+    # ⑥ 장부
+    ledger = load(WORKSPACE / "output" / "sermon_ledger.json")
+    entries = ledger.get("entries", [])
+    if entries:
+        mine = next((e for e in entries if e.get("run") == args.run), None)
+        print(f"  장부: 총 {len(entries)}편 적립"
+              + (" · 이 run 적립됨" if mine else " · 이 run 미적립 (ledger_update 실행)"))
     return 0
 
 
@@ -500,6 +765,29 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("run")
     p.add_argument("--overwrite", action="store_true", help="Overwrite existing review report")
     p.set_defaults(func=cmd_review)
+
+    p = sub.add_parser("retro", help="Post-sermon retrospective skeleton + ledger update (P2-7)")
+    p.add_argument("run")
+    p.add_argument("--overwrite", action="store_true", help="회고 뼈대를 다시 생성")
+    p.set_defaults(func=cmd_retro)
+
+    p = sub.add_parser("scripture", help="Build pericope pack and verify scripture quotations (P0-1)")
+    p.add_argument("run")
+    p.add_argument("--passage", help='본문 직접 지정 (예: "마태복음 21:33-46")')
+    p.add_argument("--translation",
+                   help="번역본 키 (기본: $TSPP_TRANSLATION 또는 KorRV — 사용자 보유본은 input/scripture/)")
+    p.add_argument("--context", type=int, help="전후 문맥 절 수 (기본 8)")
+    p.set_defaults(func=cmd_scripture)
+
+    p = sub.add_parser("binding", help="Structural text-binding gate on the outline (P0-2, §3)")
+    p.add_argument("run")
+    p.add_argument("--draft", type=Path, help="기본: output/<run>/sermon_outline.md")
+    p.add_argument("--translation", help="번역본 키 (기본: $TSPP_TRANSLATION 또는 KorRV)")
+    p.set_defaults(func=cmd_binding)
+
+    p = sub.add_parser("report", help="Read-only aggregated dashboard for a run (P2-8)")
+    p.add_argument("run")
+    p.set_defaults(func=cmd_report)
 
     return parser
 

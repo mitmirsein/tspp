@@ -1,0 +1,18 @@
+{
+  "_comment": "예화 금고 카드 스키마 예시 (P1-4). 실제 카드는 input/illustrations/<id>.json — 설교자 자산(gitignore·로컬 처리, 헌법 §9). 예화는 AI가 생성하지 않는다 — 설교자가 기록하고, 에이전트는 조회·인용만 한다(§7).",
+  "id": "2019-fig-pruning",
+  "title": "아버지의 무화과나무 전정",
+  "body": "예화 본문. 설교자가 자기 언어로 직접 기록한다. 출처가 있는 이야기는 출처를 source에 명기한다.",
+  "kind": "personal",
+  "_kind_values": "personal(직접 경험) | congregation(회중 일화 — anonymized·consent 필수) | history | literature | nature | other",
+  "source": "직접 경험 (2019, 부친의 과수원)",
+  "year": 2019,
+  "anonymized": true,
+  "_anonymized": "식별 가능 개인이 등장하면 익명화 후 true. congregation 카드에서 false면 사용 차단 권고(§8).",
+  "consent": null,
+  "_consent": "congregation 카드는 당사자 동의 후 true. null/false면 사용 차단 권고(§8).",
+  "tags": ["회개", "열매", "기다림"],
+  "used_in": [],
+  "_used_in": "illustration_index.py use가 기록: [{\"run\": \"...\", \"date\": \"YYYY-MM-DD\"}] — 재사용 신호의 근거.",
+  "notes": ""
+}

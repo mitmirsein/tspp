@@ -13,19 +13,23 @@
 
 ```
 묵상 메모 ──▶ ① 묵상 멘토 ──▶ meditation_seed (HITL)
+                  │   └─ ①.5 주해 브리프(선택) ──▶ exegesis_brief
                   │                       │
   설교문 샘플 ─▶ ② 보이스 추출 ─┐         │
                               ▼          ▼
                   ③ 보이스 합성 ──▶ resolved_voice (HITL)
                               │          │
                               ▼          ▼
-                  ④ 개요 프리플라이트 게이트 ──▶ writing_brief
+                  ④ 개요 프리플라이트 게이트 ──▶ writing_brief + scripture_pack
                               ▼
-                  ⑤ 설교 개요 작성(에이전트) ──▶ sermon_outline (계기판→HITL)
+                  ⑤ 설교 개요 작성(에이전트) ──▶ sermon_outline
+                              │   (binding·scripture 게이트 + 계기판 → HITL)
                               ▼  (선택)
                    ⑥ 전체 원고 확장 + 전달 준비물 ──▶ full_manuscript (계기판→HITL)
                                ▼  (선택)
-                   ⑦ 정성적 품질 검수(에이전트) ──▶ sermon_review_report (에이전트)
+                   ⑦ 정성적 품질 검수(에이전트, 3-pass) ──▶ sermon_review_report
+                               ▼  (설교 후)
+                   ⑧ 회고 + 이력 장부 ──▶ sermon_retro · sermon_ledger
 ```
 
 핵심 분업 — **스크립트는 측정·게이트·구조 합성만, 산문(묵상·개요·설교)은 에이전트, 확정은 설교자(HITL).**
@@ -51,14 +55,19 @@ tspp/
 ├─ scripts/                            stdlib 측정·게이트 스크립트
 │   ├─ voice_ingest.py   voice_resolve.py   homiletic_audit.py
 │   ├─ outline_preflight.py   delivery_pack.py
+│   ├─ scripture_pack.py  scripture_check.py  binding_check.py   성경·본문 정합 게이트(P0)
+│   ├─ illustration_index.py  ledger_update.py  series_check.py  예화 금고·이력 장부(P1)
 │   └─ research_fanout.py  evidence_collect.py  query_expand.py
 ├─ skills/                             에이전트 스킬(작성·멘토링 의례)
-│   ├─ sermon-mentor/  voice-ingest/  sermon-outline/  manuscript-expander/
+│   ├─ sermon-mentor/  exegesis-brief/  voice-ingest/  sermon-outline/  manuscript-expander/
+│   ├─ sermon-reviewer/               정성 검수(3-pass: 5차원·콜드리드·반대독해)
 │   ├─ registry.json                  fan-out 엔진 단일 진실 소스(4엔진)
 │   └─ kci-api-searcher/ nlk-ejournal-searcher/ semantic-scholar/ crossref-journal-searcher/
 ├─ personas/                          Preacher_{Expositor,Prophet,Pastor,Evangelist,Catechist}.md
 ├─ references/homiletic-voice.md      L1 보편 보이스 헌장
 ├─ data/                              homiletic_voice_palette.json · audience_profile.example.json
+│   ├─ scripture/KorRV/               개역한글판(1961, 퍼블릭 도메인) 정본 본문 → VENDOR.md
+│   └─ illustration_card.example.json 예화 금고 카드 스키마(실데이터는 input/illustrations/)
 ├─ input/        ⚠️ 비공개(.gitignore) — 묵상 메모·설교 샘플·회중 프로파일
 └─ output/       ⚠️ 비공개(.gitignore) — 실행 산출물(run별)
 ```
@@ -224,7 +233,20 @@ python scripts/outline_preflight.py \
 ### ⑤ 설교 개요 작성 — `sermon_outline.md` (★기본 산출)
 
 에이전트(`skills/sermon-outline`)가 `writing_brief`를 받아 **본문 충실 개요**를 쓴다.
-그 뒤 호밀레틱 계기판으로 점검:
+
+**성경 인용 규율(P0-1)**: 작성 전 `python scripts/tspp.py scripture <run>`으로 `scripture_pack.json`(pericope 정본)을 만들고, 성경 직접 인용은 **이 팩의 본문만** 원본으로 쓴다(기억 인용 금지 — 유령인용 차단의 성경 확장). 각 논점/적용에는 `**본문 뿌리**: <장절>` 앵커를 두고, pericope 밖 본문은 frontmatter `cross_refs`로 선언한다.
+
+> **번역본 선택**: 기본은 개역한글(KorRV, vendored). 설교자가 개역개정·새번역 등 보유 텍스트를 쓰면 `scripture_import.py --format lines`로 변환해 `input/scripture/<코드>/`(로컬 전용)에 두고, `.env`에 `TSPP_TRANSLATION=<코드>` 한 줄로 기본 지정한다(명령별 `--translation`도 가능). 사용자 보유본이 vendored 본보다 우선 탐색된다. **저작권 본문은 커밋 영역(`data/scripture/`)에 두지 않는다.** → README "다른 번역본 사용".
+
+작성 후 **세 점검**(sign-off 요청 전 의무 — `references/interactive-hitl.md` HITL 5):
+
+```bash
+python scripts/tspp.py binding   <run>   # 본문 정합 구조 게이트(§3) — blocked면 멈춤
+python scripts/tspp.py scripture <run>   # 장절 존재(hard)·인용 대조(worklist)
+python scripts/tspp.py audit     <run>   # 호밀레틱 계기판(비점수, 신호 위치·추세 포함)
+```
+
+계기판 직접 실행:
 
 ```bash
 python scripts/homiletic_audit.py \
@@ -268,8 +290,21 @@ python scripts/homiletic_audit.py --draft output/$RUN/full_manuscript.md \
 python scripts/tspp.py review $RUN
 
 # 2) 에이전트(sermon-reviewer)를 구동하여 output/$RUN/sermon_review_report.md를 완성시킴.
-#    에이전트는 skills/sermon-reviewer/SKILL.md 규격에 따라 5대 핵심 차원 평가를 산문으로 서술함.
+#    3-pass: ①5대 핵심 차원 ②콜드 리드(첫 청취 명료성 — 회중 추정 아님)
+#    ③반대 독해(본문이 설교에 저항하는 지점 — scripture_pack 기준). 패스 간 독립 수행.
 ```
+
+### ⑧ (설교 후) 회고 + 이력 장부 — `sermon_retro.md` · `sermon_ledger.json`
+
+```bash
+python scripts/tspp.py retro $RUN     # 1회차: 회고 뼈대 생성 — 내용은 설교자가 기록(AI 대필 금지)
+python scripts/tspp.py retro $RUN     # 2회차: 실측 시간 → chars-per-min 보정 제안 + 장부 적립
+python scripts/series_check.py --run <새run>   # 새 설교 시작 시: 본문 중복·주제 겹침·tier 편중 신호
+python scripts/tspp.py report $RUN    # 종합 현황판(읽기 전용 수합)
+```
+
+- **장부는 설교자 자신의 산출 이력**이다 — 회중 데이터가 아니다(§8). 승인된 설교가 5편 이상 쌓이면 `voice_ingest` 재실행(보이스 갱신) 신호를 띄운다(§5 — 보이스는 살아 있는 지문).
+- **예화 금고**: 예화는 `input/illustrations/` 카드(설교자 기록)에서만 — `python scripts/illustration_index.py search --query "..."` → 인용 표기 `(예화금고: <id>)` → `use`로 사용 기록. 회중 일화는 동의·익명화 필수(§8, 미해소 시 차단 권고). 스키마: `data/illustration_card.example.json`.
 
 ---
 
@@ -316,6 +351,10 @@ python scripts/outline_preflight.py \
 | 증상 | 원인 / 조치 |
 |---|---|
 | `outline_preflight`가 BLOCKED | 씨앗 또는 보이스의 `hitl.approved`가 false. 먼저 설교자 승인을 받는다. |
+| `binding_check`가 blocked | 논점/적용에 `**본문 뿌리**:` 앵커 누락, 또는 pericope 밖 앵커를 `cross_refs` 미선언, 또는 eisegesis high 후보 미재정착. 해당 항목 해소 후 재실행. |
+| `scripture_check`가 blocked (hard) | 존재하지 않는 책/장/절 표기 — 장절을 교정한다(사실관계라 게이트). |
+| `scripture_check` quote_mismatch 다수 | 대조 번역본과 인용 번역본이 다르거나 의역. 설교자가 쓰는 번역본을 변환해 `TSPP_TRANSLATION`으로 지정하면 그 번역본 기준으로 대조된다(§2-⑤ 번역본 선택). 의역은 정당 — 판단은 설교자. |
+| series_check 신호가 시끄러움 | 키워드 겹침 수준의 조잡한 매칭(의미 유사도 아님). 신호이지 판정 아님 — 의도한 시리즈면 무시. |
 | fan-out에서 일부 엔진 스킵 | 정상(degraded). 키 없는 KCI/NLK는 자동 스킵. 키를 셸에 export하면 활성. |
 | `voice_resolve` 잘못된 키 에러(exit 2) | `--genre/--tier/--season` 값 오타. 출력된 유효 목록에서 고른다(§2-③). |
 | 계기판이 개요에서 강사화 점등 | 개요는 골격이라 hapnida 낮음 → 아티팩트일 수 있다. 산문 단락 기준으로 재해석, 원고 확장 후 재점검. |

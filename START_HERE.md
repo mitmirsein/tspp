@@ -13,6 +13,8 @@ TSPP는 설교 준비를 돕습니다. 설교자를 대체하지 않습니다.
 - 설교자의 최초 묵상이 우선입니다. `meditation.origin_memo`를 덮어쓰지 않습니다.
 - 단계 이동은 HITL(사람 승인)로 통제합니다. `hitl.approved=false`인 산출물을 승인된 것처럼 다음 단계로 넘기지 않습니다.
 - 인용, 통계, 일화, 출처를 지어내지 않습니다. 실제 `EvidencePack` 기록과 추출된 원문만 사용합니다.
+- 성경 직접 인용은 `output/<run>/scripture_pack.json`(정본 본문)에서만 합니다. 개요 sign-off 전 `binding`·`scripture` 게이트를 반드시 실행합니다(`references/interactive-hitl.md` HITL 5).
+- 예화는 설교자의 예화 금고(`scripts/illustration_index.py`)에서만 조회합니다. 생성하지 않습니다.
 - 학술 자료는 참고 자료입니다. 성경 본문을 대체하지 않습니다.
 - 스크립트는 측정, 게이트, 추출, 구조화를 담당합니다. 에이전트는 산문을 작성합니다. 최종 확정은 설교자가 합니다.
 - 비공개 입력과 출력은 로컬 `input/`과 `output/` 아래에 둡니다.
@@ -77,4 +79,9 @@ python3 scripts/tspp.py ingest <run>
 python3 scripts/tspp.py preflight <run> \
   --meditation-seed output/<run>/meditation_seed.json \
   --resolved-voice output/<run>/resolved_voice.json
+python3 scripts/tspp.py scripture <run>   # 성경 인용 정합 (pericope 팩 + 대조)
+python3 scripts/tspp.py binding <run>     # 본문 정합 구조 게이트 (§3)
+python3 scripts/tspp.py audit <run>       # 호밀레틱 계기판
+python3 scripts/tspp.py retro <run>       # 설교 후 회고 + 장부
+python3 scripts/tspp.py report <run>      # 종합 현황판
 ```

@@ -40,7 +40,7 @@ sermon_outline.md (승인) + writing_brief.json + resolved_voice.json
 - **개요의 논리를 따른다** — 새 논점·새 메시지를 *추가하지* 않는다. 개요에 있는 것을 *말로* 푼다.
 - **구어 register** — 회중을 향한 직접 호명, 듣기 좋은 호흡, '~습니다'체. 문어·논문체 금지.
 - **보이스 충실** — persona 어조 차용, 청중 음높이, lexicon_avoid 회피, 시그니처 표현 살림.
-- **근거 정직** — 유령인용 금지(brief의 EvidencePack 레코드만). 새 통계·일화 지어내지 않음.
+- **근거 정직** — 유령인용 금지(brief의 EvidencePack 레코드만). 새 통계·일화 지어내지 않음. 성경 인용은 `scripture_pack.json` 본문만(§7 확장 — 확장 후 `tspp.py scripture <run>`으로 재대조). 예화는 개요에 이미 인용된 금고 카드(`(예화금고: <id>)`)만 펴고, 확장 중 새 예화를 끼워넣지 않는다.
 - **불변식** — origin_memo 불가침 · 긴장 보존(disposition) · eisegesis 차단.
 
 ### Phase 3 — 전달 준비물 (Delivery Pack)

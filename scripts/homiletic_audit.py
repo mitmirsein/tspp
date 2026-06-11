@@ -65,6 +65,80 @@ def count_markers(text: str, markers: list[str]) -> list[dict]:
     return sorted(hits, key=lambda h: -h["count"])
 
 
+def split_paragraphs(raw: str) -> list[dict]:
+    """raw markdown → [{'n', 'section', 'text'}] — 신호 위치 지목용(P2-8).
+
+    '## ' 표제로 섹션을 추적하고, 빈 줄 단위로 단락을 나눈다.
+    text는 strip_markup 적용본(마커 매칭이 측정 본문과 일치하도록).
+    """
+    paras = []
+    section = "(머리)"
+    buf: list[str] = []
+    n = 0
+
+    def flush():
+        nonlocal n, buf
+        chunk = "\n".join(buf).strip()
+        if chunk:
+            n += 1
+            paras.append({"n": n, "section": section,
+                          "text": vi.strip_markup(chunk)})
+        buf = []
+
+    for line in raw.splitlines():
+        if line.startswith("## "):
+            flush()
+            section = line[3:].strip()
+            continue
+        if not line.strip():
+            flush()
+        else:
+            buf.append(line)
+    flush()
+    return paras
+
+
+def locate_markers(paras: list[dict], markers: list[str], limit: int = 3) -> list[dict]:
+    """마커별 출현 위치 — '다시 읽어보라'를 '여기를 다시 읽어보라'로(P2-8)."""
+    out = []
+    for m in markers:
+        locs = []
+        for p in paras:
+            idx = p["text"].find(m)
+            if idx == -1:
+                continue
+            start = max(0, idx - 12)
+            excerpt = p["text"][start: idx + len(m) + 18].replace("\n", " ")
+            locs.append({"para": p["n"], "section": p["section"],
+                         "excerpt": f"…{excerpt}…"})
+            if len(locs) >= limit:
+                break
+        if locs:
+            out.append({"marker": m, "locations": locs})
+    return out
+
+
+def section_breakdown(paras: list[dict]) -> list[dict]:
+    """섹션별 신호 분해 — 어느 섹션이 어떤 결로 기우는지(P2-8). 비점수."""
+    by: dict[str, dict] = {}
+    order: list[str] = []
+    for p in paras:
+        s = p["section"]
+        if s not in by:
+            by[s] = {"section": s, "chars": 0, "lecture": 0, "judge": 0,
+                     "solidarity": 0, "cliche": 0, "academic": 0}
+            order.append(s)
+        row = by[s]
+        t = p["text"]
+        row["chars"] += len(t.replace(" ", ""))
+        row["lecture"] += sum(t.count(m) for m in LECTURE_MARKERS)
+        row["judge"] += sum(t.count(m) for m in JUDGE_MARKERS)
+        row["solidarity"] += sum(t.count(m) for m in SOLIDARITY_MARKERS)
+        row["cliche"] += sum(t.count(m) for m in DEAD_CLICHES)
+        row["academic"] += sum(t.count(m) for m in ACADEMIC_SYNTAX)
+    return [by[s] for s in order]
+
+
 def detect_lecturification(sig: dict, text: str) -> dict | None:
     """강사화 — 호명·질문이 사라지고 주석 밀도가 오르면 설교가 강의로 굳음.
     신호: scripture_ref_density↑ + address↓ + question↓ + hapnida↓(문어체)."""
@@ -192,6 +266,9 @@ def main(argv=None) -> int:
     ap.add_argument("--preacher-voice", default=None,
                     help="preacher_voice.json (보이스 드리프트 점검)")
     ap.add_argument("--out", required=True, help="산출 homiletic_audit.json")
+    ap.add_argument("--ledger", default=None,
+                    help="sermon_ledger.json — 같은 신호의 run 간 반복(추세) 보고")
+    ap.add_argument("--run", default=None, help="현재 run 이름 (추세 대조에서 자신 제외)")
     args = ap.parse_args(argv)
 
     draft = Path(args.draft)
@@ -201,12 +278,33 @@ def main(argv=None) -> int:
     raw = draft.read_text(encoding="utf-8", errors="replace")
     text = vi.strip_markup(raw)
     sig = vi.analyze_one(draft.name, raw)  # voice_ingest 재사용
+    paras = split_paragraphs(raw)
 
     worklist = []
     for det in (detect_lecturification(sig, text), detect_judgeification(text),
                 detect_dead_cliches(text), detect_academic_syntax(text)):
         if det:
+            # 신호 위치 지목 — "여기를 다시 읽어보라" (P2-8)
+            mks = [h["marker"] for h in det.get("markers", [])]
+            det["locations"] = locate_markers(paras, mks)
             worklist.append(det)
+
+    # 추세 — 같은 부패 신호가 최근 run들에서 반복되는가 (P2-8, ledger 연동)
+    trend = []
+    if args.ledger and Path(args.ledger).is_file():
+        try:
+            entries = json.loads(Path(args.ledger).read_text(encoding="utf-8")) \
+                .get("entries", [])
+            past = [e for e in entries if e.get("run") != args.run]
+            for w in worklist:
+                name = w["corruption"]
+                repeats = [e["run"] for e in past
+                           if name in (e.get("audit_signals") or [])]
+                if repeats:
+                    trend.append({"corruption": name, "repeated_in": repeats,
+                                  "note": f"최근 {len(repeats)}편에서도 점등 — 습관성 여부 확인"})
+        except (OSError, json.JSONDecodeError):
+            pass
 
     absences = absence_warnings(sig)
 
@@ -223,7 +321,7 @@ def main(argv=None) -> int:
             avoid_hits = lexicon_avoid_hits(text, json.loads(p.read_text(encoding="utf-8")))
 
     result = {
-        "schema": "tspp.homiletic_audit/1",
+        "schema": "tspp.homiletic_audit/2",
         "_note": ("비점수 HITL worklist — '다시 읽어보라' 신호. pass/fail·게이트가 아니다. "
                   "판단은 설교자가 한다(영적 권위 귀속). 직접 호명·케리그마 선포·권면·기도 "
                   "종결은 *잡지 않는다*(설교의 생명) — 결핍이 경보다."),
@@ -238,6 +336,8 @@ def main(argv=None) -> int:
         "absence_warnings": absences,
         "voice_drift": drift,
         "lexicon_avoid_hits": avoid_hits,
+        "sections": section_breakdown(paras),
+        "trend": trend,
         "summary": (f"{len(worklist)} 부패 신호 · {len(absences)} 결핍 경보 · "
                     f"{len(drift)} 드리프트 · {len(avoid_hits)} 회피표현 출현 — 전부 HITL 판단"),
     }
@@ -254,7 +354,12 @@ def main(argv=None) -> int:
         print(f"  ⚠️ {w['corruption']}")
         for s in w["fired_signals"]:
             print(f"       - {s}")
+        for lm in w.get("locations", [])[:3]:
+            loc = lm["locations"][0]
+            print(f"       · '{lm['marker']}' → [{loc['section']}] ¶{loc['para']} {loc['excerpt'][:50]}")
         print(f"       ↳ 재독: {w['reread']}")
+    for t in trend:
+        print(f"  ↗ 추세: {t['corruption']} — {t['note']} ({', '.join(t['repeated_in'][:4])})")
     for a in absences:
         print(f"  ○ 결핍: {a}")
     for d in drift:

@@ -37,8 +37,12 @@ python scripts/outline_preflight.py \
   --resolved-voice  output/<run>/resolved_voice.json \
   [--evidence output/<run>/EvidencePack.json] \
   --out output/<run>/writing_brief.json
+
+# pericope 본문 팩 — 성경 직접 인용의 유일한 원본 (P0-1)
+python scripts/tspp.py scripture <run>     # 또는 scripts/scripture_pack.py 직접 실행
 ```
 - `gates.ready=false`(묵상 씨앗·보이스 중 미승인)면 **작성에 들어가지 않는다**. 게이트 해소 먼저.
+- **성경 인용은 `scripture_pack.json`의 본문만 원본으로 쓴다** — 기억으로 인용하지 않는다(§7 확장). 다른 번역본을 쓰려면 인용 옆에 번역본을 명기한다.
 
 ### Phase 1 — 보이스 주입 (강단 의례)
 첫 문장을 쓰기 전, `writing_brief.voice.injection_block`을 **명시적으로 자기에게 선언**한다(원고엔 남기지 않음). homiletic-voice.md §5 의례 + L1-개인 + L2(persona 어조 차용·청중 음높이). L2 stance는 components로 *한 문장* 렌더(스크립트가 짓지 않음).
@@ -47,12 +51,23 @@ python scripts/outline_preflight.py \
 `writing_brief.structure_hint`를 따라 `sermon_outline.md`를 쓴다(도입·논점 3–5·예화·적용·긴장 보존·결단·기도). 핵심 규율([outline-method §3](./references/outline-method.md)):
 - **본문에 뿌리** — 각 논점은 `meditation_core.rooted_in_text`·`message.text_anchor`에 정착.
 - **유령인용 금지** — 인용은 `evidence` EvidencePack 실제 레코드만. 자료는 설교자 참고이지 본문 권위 대체 아님.
+- **예화는 금고에서만** — 일화·예화는 (a) 예화 금고 카드(`scripts/illustration_index.py search`, 인용 표기 `(예화금고: <id>)` + `use`로 사용 기록) 또는 (b) EvidencePack 레코드만. 금고가 비거나 매치가 없으면 **예화 없이 쓰고** "예화 후보 찾기"를 설교자 worklist로 넘긴다 — 지어내지 않는다(§7). 회중 일화 카드는 동의·익명화 미해소 시 인덱서가 차단 권고한다(§8).
 - **origin_memo 불가침** — 설교자 원본 묵상을 덮어쓰지 않고 *증폭*.
 - **긴장 보존** — `tensions[].disposition`(open/resolving/resolved) 따라; 평탄화 금지.
 - **보이스 충실** — lexicon_avoid 회피, persona 어조 차용(견해 아님), 청중 음높이.
 
-### Phase 3 — Foundation Gate (본문 정합)
-작성 후 binding 점검: 각 논점·적용이 본문에서 나오는가? `message.eisegesis_risk`가 high인 후보는 본문 재정착 또는 제외. **적용이 본문을 왜곡하면 멈춘다**(eisegesis 차단 — 본문 정합 hard gate hard gate).
+### Phase 3 — Foundation Gate (본문 정합 — 스크립트 게이트)
+작성 후 구조 게이트 두 개를 **실행**한다(자율 점검이 아니라 스크립트 검증 — P0-2):
+
+```bash
+python scripts/tspp.py binding <run>      # 앵커 존재·범위·교차참조 선언 (§3 구조 게이트)
+python scripts/tspp.py scripture <run>    # 장절 존재(hard)·인용 대조(worklist)
+```
+
+- **작성 규격**: 각 논점·적용 섹션에 `**본문 뿌리**: <장절>` 한 줄을 반드시 둔다. pericope 밖 본문을 의도적으로 쓰면 frontmatter `cross_refs: "막 12:1-12; 사 5:1-7"`로 선언한다.
+- `binding_check` verdict가 **blocked면 멈춘다** — 앵커를 채우거나 cross_refs를 선언하거나 해당 논점을 본문에 재정착한다.
+- `message.eisegesis_risk`가 high인 후보를 썼다면 본문 재정착 후 frontmatter `eisegesis_resolution`에 기록한다(미기록이면 게이트 차단). **적용이 본문을 왜곡하면 멈춘다**(§3 hard gate).
+- 해석의 *적절성*은 스크립트가 보증하지 못한다 — worklist 신호를 설교자에게 그대로 전달한다(§10).
 
 ### Phase 4 — 호밀레틱 계기판
 ```bash
@@ -70,7 +85,7 @@ python scripts/homiletic_audit.py --draft output/<run>/sermon_outline.md \
 ## 3. Gotchas (피해야 할 함정)
 
 1. **대필** — 가장 큰 위험. AI가 매끈한 *남의* 설교를 쓰지 않는다. 씨앗·보이스를 *그 설교자의* 개요로 빚는다.
-2. **유령인용** — EvidencePack에 없는 문헌·통계·일화를 지어내지 않는다.
+2. **유령인용** — EvidencePack에 없는 문헌·통계·일화를 지어내지 않는다. **성경도 동일** — 기억으로 인용하지 않고 `scripture_pack.json`의 본문만 쓴다(섞인 번역본·없는 절 번호는 scripture_check가 잡는다).
 3. **묵상 덮어쓰기** — origin_memo는 불가침. "더 좋은 메시지"로 대체하지 않는다.
 4. **긴장 평탄화** — 인위적 봉합도, 정직한 해소의 강제 개방도 금지.
 5. **eisegesis** — 적용이 본문을 미끼로 다른 메시지로 도약하면 멈춘다.
@@ -88,6 +103,7 @@ python scripts/homiletic_audit.py --draft output/<run>/sermon_outline.md \
 - [references/outline-method.md](./references/outline-method.md) — 작성 방법론(구조·정착·게이트·보이스 주입).
 - [templates/sermon_outline.example.md](./templates/sermon_outline.example.md) — 개요 산출 구조 예시.
 - `../../scripts/outline_preflight.py` — 게이트+브리프 수합 · `../../scripts/homiletic_audit.py` — 계기판.
+- `../../scripts/scripture_pack.py`·`scripture_check.py` — pericope 팩·인용 대조(P0-1) · `../../scripts/binding_check.py` — 본문 정합 구조 게이트(P0-2).
 - 상류: `skills/sermon-mentor`(씨앗) · `scripts/voice_resolve.py`(보이스) · `references/homiletic-voice.md`(L1).
 - (선택·향후) TOS Decalogue 작성 엔진 브리지 — TSPP 단독 원칙상 런타임 의존 아님.
 

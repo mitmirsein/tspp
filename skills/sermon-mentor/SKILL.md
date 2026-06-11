@@ -42,6 +42,10 @@ references_path: "./references"
 - 본문 정착·회중 접점·긴장 다루기 교차질문으로 묵상을 **본문에 뿌리내린다**(eisegesis 조기 경고).
 - fan-out 검색 키워드(ko/en) 도출 → `evidence.keywords_used`.
 
+### Phase 2.5 — 주해 브리프 (선택, exegesis-brief 스킬)
+- 본문 자체의 자리·문학 구조·장르·병행·긴장 후보를 준비실 문서로 정리 → `skills/exegesis-brief/SKILL.md`.
+- 정본 본문은 `scripture_pack.json`(P0-1)에서만. **반드시 Phase 1(경청) 이후** — 주해가 묵상을 납치하지 않게. 산출 `exegesis_brief.md`는 HITL 3(씨앗 승인)에 부속해 확인받는다.
+
 ### Phase 3 — 학술 fan-out (Evidence) ★ 품질 원칙의 핵심
 - 도출 키워드로 **검증된 자료**를 끌어온다(LLM 일반론 금지). **반드시 Phase 1 이후** — 자료가 처음 생각을 납치하지 않게.
 
@@ -82,7 +86,8 @@ python scripts/research_fanout.py "<본문/주제>" \
 
 - [references/mentoring-homiletics.md](./references/mentoring-homiletics.md) — 묵상 산파술 방법론(페르소나·6-Phase 상세·윤리).
 - [templates/meditation_seed.example.json](./templates/meditation_seed.example.json) — 산출물 스키마(팔복 예시).
-- `../../VENDOR.md` — fan-out 엔진 출처(TAWP vendored)·동기화 정책.
+- `../exegesis-brief/SKILL.md` — Phase 2.5 주해 브리프(본문 자체의 주해 기반, 선택).
+- `../../VENDOR.md` — fan-out 엔진 출처(TAWP vendored)·성경 본문 데이터 출처.
 
 ---
 *MS_Dev · TSPP · sermon-mentor v0.1 — research-mentor 3.0의 설교 도메인 변형 + 학술 fan-out 통합*
