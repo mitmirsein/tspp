@@ -153,14 +153,20 @@ def convert_scrollmapper(source: Path) -> dict[int, dict[int, dict[int, str]]]:
 
 _LINE_RE = re.compile(
     r"^\s*(?P<book>[가-힣A-Za-z][가-힣A-Za-z0-9 ]*?)\s*"
-    r"(?P<ch>\d{1,3})\s*[:：]\s*(?P<v>\d{1,3})[\s.]+(?P<text>\S.*)$")
+    r"(?P<ch>\d{1,3})\s*[:：]\s*(?P<v>\d{1,3})(?:\s*[-~]\s*(?P<v2>\d{1,3}))?"
+    r"[\s.]+(?P<text>\S.*)$")
 
 
 def convert_lines(source: Path) -> dict[int, dict[int, dict[int, str]]]:
-    """lines 포맷('창1:1 본문' / '창세기 1:1 본문') → 표준 dict."""
+    """lines 포맷('창1:1 본문' / '창세기 1:1 본문') → 표준 dict.
+
+    병합 절 표기('신6:18-19 본문')는 첫 절에 본문을 귀속한다(후속 절은 빈 절로
+    남음 — 인용 대조는 연속 절 윈도우라 매칭에 지장 없음).
+    """
     out: dict[int, dict[int, dict[int, str]]] = {}
     unknown: dict[str, int] = {}
     skipped = 0
+    merged = 0
     for raw in source.read_text(encoding="utf-8", errors="replace").splitlines():
         if not raw.strip():
             continue
@@ -172,10 +178,15 @@ def convert_lines(source: Path) -> dict[int, dict[int, dict[int, str]]]:
         if row is None:
             unknown[m.group("book").strip()] = unknown.get(m.group("book").strip(), 0) + 1
             continue
+        if m.group("v2"):
+            merged += 1
         out.setdefault(row[0], {}).setdefault(int(m.group("ch")), {})[int(m.group("v"))] = \
             m.group("text").strip()
+    if merged:
+        print(f"[scripture_import] 병합 절 표기 {merged}줄 — 첫 절에 귀속", file=sys.stderr)
     if skipped:
-        print(f"[scripture_import] 형식 불일치로 건너뛴 줄: {skipped}", file=sys.stderr)
+        print(f"[scripture_import] 형식 불일치로 건너뛴 줄: {skipped} (절 번호 누락 등 — 원본 확인)",
+              file=sys.stderr)
     for name, n in sorted(unknown.items(), key=lambda x: -x[1])[:5]:
         print(f"[scripture_import] 미해석 책 이름 '{name}' ({n}줄) — BOOKS 별칭 확인",
               file=sys.stderr)
