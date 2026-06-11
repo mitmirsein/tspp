@@ -27,6 +27,26 @@ TSPP는 **공개 단독(self-contained) 레포**다. 런타임에 외부 상류 
 
 반영 위치: `research_fanout.py`의 `ADAPTERS`·`DEFAULT_ENGINE_ROUTING`·`ENGINE_TIMEOUT`, `query_expand.py`의 `DEFAULT_ENGINE_ROUTING`, `skills/registry.json`.
 
+## 성경 본문 데이터 (`data/scripture/`)
+
+성경 인용 정합 게이트(`QUALITY_UPGRADE.md` P0-1)의 정본 본문 데이터.
+
+| 항목 | 내용 |
+|---|---|
+| 번역본 | **개역한글판 (1961)** — `data/scripture/KorRV/` (66권 31,104절) |
+| 라이선스 | **퍼블릭 도메인.** 대한성서공회의 개역한글판 저작권은 만료되어 자유 이용 가능 — 대한성서공회 저작권 FAQ 및 알파알렙 라이선스 안내에서 확인(2026-06-11). |
+| 원 데이터 | [scrollmapper/bible_databases](https://github.com/scrollmapper/bible_databases) `formats/json/KorRV.json` (2026-06-11 입수) |
+| 변환 도구 | `scripts/scripture_import.py` (scrollmapper JSON → 책별 파일 + `index.json`) |
+| 검증 | 마태복음 21:33·38·39를 독립 소스(한국어 위키문헌 개역한글판)와 글자 단위 대조 — 3구절 일치 확인(2026-06-11). 총 절수 31,104는 정경(KJV 절번호 체계) 표준과 일치. |
+
+라이선스 확인 출처:
+- 대한성서공회 저작권 FAQ: <https://www.bskorea.or.kr/bbs/board.php?bo_table=copyright_faq&wr_id=3>
+- 알파알렙 저작권 안내(개역한글 퍼블릭 도메인 명시): <https://app.alphalef.com/page/license/>
+
+주의:
+- **저작권이 살아 있는 번역본(개역개정·새번역 등)은 커밋하지 않는다.** 사용자 보유본은 `scripture_import.py`(lines/tsv/scrollmapper 포맷)로 변환해 `input/scripture/<코드>/`(gitignore, 로컬 전용)에 둔다 — `--out` 생략 시 기본 경로이며, scripture_lib가 vendored 본보다 우선 탐색한다. 선택은 `.env`의 `TSPP_TRANSLATION=<코드>` 또는 명령별 `--translation`.
+- 원어 데이터(SBLGNT·WLC)는 라이선스상 vendoring 가능하나 현재 미포함(향후 선택 과제 — QUALITY_UPGRADE §3 P0-1).
+
 ## 동기화 정책
 
 vendoring이므로 TAWP 개선이 자동 반영되지 않는다. 엔진 검색 로직(API 변경 대응 등)에 중요한 업데이트가 TAWP에 생기면 **수동으로** 다시 가져온다. 그때 위 "TSPP 적응" 차이를 재적용할 것.
