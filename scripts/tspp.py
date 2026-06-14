@@ -64,6 +64,21 @@ def rel(path: Path) -> str:
         return str(path)
 
 
+def _validate_run_name(run: str) -> str:
+    """run 이름이 단일 경로 세그먼트인지 검증(디렉토리 탈출 차단).
+
+    run은 WORKSPACE/output/<run> 등 경로 구성에 직접 쓰이므로, 경로 구분자나
+    '..'·절대경로·널바이트가 끼면 WORKSPACE 밖으로 새어나갈 수 있다. 정상 run
+    이름(matthew21, matthew21_tenant 등)은 통과시키고 탈출 시도만 막는다.
+    """
+    bad = run in ("", ".", "..") or any(
+        c in run for c in ("/", "\\", "\x00")
+    ) or os.path.isabs(run)
+    if bad:
+        raise SystemExit(f"[tspp] 잘못된 run 이름입니다(경로 구분자·'..'·절대경로 불가): {run!r}")
+    return run
+
+
 def call(args: list[str]) -> int:
     print("+ " + " ".join(args))
     proc = subprocess.run(args, cwd=str(ROOT))
@@ -795,6 +810,8 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
+    if getattr(args, "run", None) is not None:
+        _validate_run_name(args.run)
     return args.func(args)
 
 
